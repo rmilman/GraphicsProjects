@@ -1,0 +1,2 @@
+clear
+if (-e ~$MASTER/adm/class.logout) source ~$MASTER/adm/class.logout

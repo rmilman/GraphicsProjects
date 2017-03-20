@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CS184 Final Project</title>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+        <link rel="stylesheet" href="assets/css/style.css">
+        <link href='http://fonts.googleapis.com/css?family=Lato:100,300,400,700' rel='stylesheet' type='text/css'>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js">
+        </script> 
+        <script src = "assets/js/script.js"></script>
+    </head>
+    <body>
+        <!-- Sidebar Hamburger Icon -->
+        <div id = "sidebar-button">
+            <a id="nav-toggle">
+                <span></span>
+            </a>
+        </div>
+
+        <!-- Sidebar -->
+        <nav class = "sidebar-container">
+
+            <ul>
+                <li class="sidebar-item-title" id = "title-button">Title</li>
+                <li class="sidebar-item" id = "abstract-button">Abstract</li>
+                <li class="sidebar-item-title" id = "tech-button">Technical Overview</li>
+                <li class="sidebar-item" id = "point-button">Sampling Surface Points</li>
+                <li class="sidebar-item " id = "oct-button">Octree</li>
+                <li class="sidebar-item" id = "BSSRDF-button">BSSRDF</li>
+                <li class="sidebar-item" id = "multiple-button">Diffusion Approximation</li>
+                <li class="sidebar-item" id = "single-button">Single Scattering</li>
+                <li class="sidebar-item" id = "diff-button">Difficulties</li>
+                <li class="sidebar-item" id = "lesson-button">Lessons Learned</li>
+                <li class="sidebar-item-title" id = "result-button">Results</li>
+                <li class="sidebar-item-title" id = "ref-button">References</li>
+                <li class="sidebar-item-title" id = "resp-button">Contributions</li>
+            </ul>
+
+
+        </nav>
+
+        <!-- Page Wrapper, Consisting of All the Sections -->
+        <div class = "page-wrapper">
+
+            <section class = "section-title-page" id = "title-section">
+                <div class = "text-title" id = "title-text">
+                    <div align="center">
+                        <img src="assets/img/dragon_first.png" width="360px" />    
+                    </div>
+                    <h1>Subsurface Scattering</h1>
+                    <h4>Implemented by Trevor Nesbitt, Becca Milman, and Beth Marrone</h4s>
+                </div>
+            </section>
+
+            <section class = "section-small" id = "abstract-section">
+                <div class = "text" id = "abstract-text">
+                    <h1>Abstract</h1>
+                    <p>The ray tracing algorithms we have implemented so far in this class have relied on the assumption that when light hits a material it either goes through or bounces off at the same place it entered. We used BRDFs to describe materials' reflectance. BRDF's take in an incoming vector and an outgoing vector and return the amount of incoming radiance that will reflect. This does not take subsurface scattering into consideration. Subsurface scattering occurs in translucent materials when light penetrates but does not always go through. When light enters a translucent material it goes in and reflects off the interior of the material multiple times before exiting again at different location than where it entered. In order to account for this, materials need to be modelled with a BSSRDF. This is a challenge to implement because in addition to integrating over all incoming directions and all outgoing directions for one point, we also need to integrate over an area where light could have scattered out at that point. To make this much faster, we chose to implement two approximations of subsurface scattering: the diffusion approximation and single-scattering. To model the diffusion effects, we created sample surface points and stored them in an octree data structure. We augmented our results by separating the color channels and adding a glossy BRDF</p>
+                </div>
+            </section>
+
+            <section class = "section-title" id = "tech-section">
+                <div class = "text-title" id = "tech-text">
+                    <h1>Technical Approach</h1>
+                </div>
+            </section>
+            <section class = "section-tiny" id = "overview-section">
+                <div class = "text" id = "overview-text">
+                    <h1>Overview</h1>
+                    <p>We initially planned to use the Jensen 2001 paper in order to implement subsurface scattering, but the paper only gave a mathematical derivation of the approximations and vague suggestions on how to implement it. While Jensen did give us a solid theoretical base to start from, Physically Based Rendering by Pharr and Humphreys gave a much clearer approach to take. We used the pseudocode from the chapter as a guide, but edited it to fit in with our ray tracer. Some of the coefficients for error and scattering depth were too large or too small for our collada files, so we adjusted as necessary.</p>
+                </div>
+            </section>
+            <section class = "section-medium" id = "point-section">
+                <div class = "text" id = "point-text">
+                    <h1>Sample Surface Points</h1>
+                    <p>The first step in the subsurface scattering pipeline is to collect several hundred to several thousand sample points on the surface. These points are essential to our diffusion approximation for multiple scattering. When we approximate multiple scattering for a single ray we’re tracing, we consider the irradiance from all of these points, theorizing that with subsurface scattering any of the light coming in from these points could be bounced into the ray we’re tracing.</p>
+
+                    <p>We sampled surface points according to the guidelines in the Physically Based Rendering Textbook. To collect the points, we shoot several thousand rays into the scene, bounce them repeatedly around the scene, and collect their intersection points after a certain ray depth. When a ray intersects a part of the scene and the object we intersected has a BSSRDF, we collect the hit point’s position, irradiance, and area it represents. To calculate the area the point represents and to keep points evenly spaced, we used 3D Poisson Spheres (which are generally a good approximation for 2D Poisson disks). To calculate the irradiance at the point, we perform our standard direct lighting calculations. Finally, we bounce the ray into the scene again using a hemisphere sampler to pick our ray’s new direction. After repeating this process to collect several thousand candidate points, we add them to a list of final points to return if none of them intersect the Poisson spheres of the points already added.</p>
+
+                    <p>We made a visualizer for our sampled points. Press ‘P’ to activate this visualizer and display the acquired points on the surface of the scene. Below you can see this visualizer in action, showing three sets of points collected with different Poisson sphere radii.</p>
+
+                    <div align="center">
+                        <table style="width=100%">
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/points3.png" width="360px" />
+                                <figcaption align="middle">Poisson radius is 0.05, 423 points</figcaption>
+                                <td align="middle">
+                                <img src="assets/img/points2.png" width="360px" />
+                                <figcaption align="middle">Poisson radius is 0.03, 1183 points</figcaption>
+                                <td align="middle">
+                                <img src="assets/img/points1.png" width="360px" />
+                                <figcaption align="middle">Poisson radius is 0.01, 10,000 points</figcaption>
+                            </tr>
+                        </table>
+                    </div>
+
+                </div>
+            </section>
+
+            <section class = "section-large" id = "oct-section">
+                <div class = "text" id = "oct-text">
+                    <h1>Octree</h1>
+                    <p>After all of the surface points are sampled, they are each inserted into an octree data structure. An octree node has 8 children, and each internal (non-leaf) node stores a luminance-weighted average of its children’s central point and irradiance values. It also stores the sum of its children’s area (which, at the leaves, is determined by area of the Poisson circles). Upon insertion, we navigate through the octree by comparing the to-be-inserted point to the midpoint of each internal node. By comparing x/y/z components, we get 2^3 = 8 possible children. If we reach a leaf that is not full, we insert the point into that leaf. If on the other hand the leaf is full, we convert the leaf to an internal node and re-insert each of the points originally associated with that leaf. When we convert the leaf to an internal node, the BBox of the child node has an x value, without loss of generality, ranging between the parent’s midpoint’s x-value to either the min or max x-value of the parent’s BBox. This logic is implemented in the octreeChildBound function.</p>
+                    <p>After all points have been added to the octree, we recursively compute the irradiances, areas, and central points of the internal nodes via a luminance-weighted average of its children’s values. Upon query by the Mo function, we can adjust how deep into the Octree we go by specifying an error tolerance. The deeper into the octree we go, the more specific our diffuse approximations are - meaning the irradiance of fewer points influences the radiance at a query point. In terms of the Mo function described below, going deeper into the octree means we use a Pj (the stored midpoint for an internal node) that is likely closer to the query point, Ej (irradiance) is an average of less points, and Aj (area) will be smaller. Going deeper gives us less error, but also increases runtime.<p>
+
+                    <div align="center">
+                        <table style="width=100%">
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/high_error_max.png" width="360px" />
+                                <figcaption align="middle">High max error</figcaption>
+                                <td align="middle">
+                                <img src="assets/img/med_error_max.png" width="360px" />
+                                <figcaption align="middle">Medium max error</figcaption>
+                                <td align="middle">
+                                <img src="assets/img/low_error_max.png" width="360px" />
+                                <figcaption align="middle">Low max error</figcaption>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <h1>Mo</h1>
+                    <p>To calculate the outgoing radiance at an intersection point, the ray tracer’s direct lighting function calls the BSSRDF which uses its material properties to calculate outgoing irradiance. This irradiance is the radiant exitance, Mo, weighted by a fresnel term, assumed to be constant in a homogenous material. Mo is essentially all the contributing light coming from the area surrounding a point. Approximating what should be an integral as a sum:</p>
+                    <div align="center">
+                        <img src="assets/img/mo.png" width="360px" />    
+                    </div>
+                    <p>Rd is the diffuse reflectance from the illumination single point, pj, on to the point we are calculating for, po. Since each point pj is really an area determined by our Poisson spheres, each point represents a small area with an average irradiance Ej and an area Aj. If there are many small areas, this can be a slow process to calculate each corresponding Rd. If the material does not vary much over a larger area, we can just use a larger area to calculate Rd. The min_dist and max_error are closely related, so they should be adjusted in tandem when looking for good results.</p>
+
+                    <h1>Visualizer</h1>
+                    <p>The octree visualizer uses similar functionality to the BVH visualizer. You can enter visualizer mode by pressing ‘O’. Keys 1-8 show children one through eight by pushing to a stack. Keyboard up returns to the parent by popping from stack. The points are colored according to which child they are. Here is a gif showing the octree visualizer:</p>
+                    <div align="center">
+                        <img src="assets/img/max_oct.gif" width="360px" />    
+                    </div>
+                </div>
+            </section>
+
+            <section class = "section-small" id = "BSSRDF-section">
+                <div class = "text" id = "BSSRDF-text">
+                    <h1>BSSRDF - Coefficients</h1>
+                    <p>Each subsurface scattering material has set of coefficients that describe how much they scatter light, how much they absorb light, what color they are and what direction they scatter light in. The scattering coefficient is sigma_s, and it has three values, one for each of RGB. Similarly the absorption coefficient, sigma_a, has RGB components. G represents the average direction of scattering. If g is 0, the scattering is isotropic. If g > 0, the light scatters forward, away from the light. If g < 0, light scatters backward. We used the diffuse color to create a BRDF used indirect lighting. We gather this data from a couple of sources: the Jensen 2001 paper and from Autodesk’s “Optical Properties” article.</p>
+                </div>
+            </section>
+            <section class = "section-large" id = "multiple-section">
+                <div class = "text" id = "multiple-text">
+                    <h1>BSSRDF - Diffusion Approximation</h1>
+                    <p>The diffusion approximation component of our BSSRDF model approximates the output radiance for highly scattering materials. It is a way of simulating the limit of radiance as the number of scattering events reaches infinity. In order to calculate the diffuse approximation, we use a dipole model where one simulated point-light is directly above the hit-point of the incoming ray and one is directly beneath the hit-point, within the material (which is modeled as semi-infinite, meaning its z values range from -inf to 0 in object coordinates). This model gives us the isotropic scattering properties we desire. The height and depth of the simulated lights are functions of the material’s absorption and scattering coefficients as well as its index of refraction.</p>
+                    <p>The dipole model is used in our Rd calculation described above. An image of this model is shown below. Note the simulated point light above, and the "real" point light below.</p>
+                    <div align="center">
+                        <img src="assets/img/dipole.png" width="360px" />    
+                    </div>
+                    <p>The hit-point mentioned in the previous paragraph is inputted as the midpoint of some octree node, and Rd uses the dipole model to output a weight representing how much the irradiance at the hit-point contributes to the radiance at a query point, as a function of the distance between the hit-point and the query point. When the simulated point-lights mentioned above are close to the surface, the output weight of Rd is higher. But it also has a faster exponential falloff, meaning that the influence of the hit-point’s irradiance on the query-point’s radiance falls off very quickly.</p>
+                    <p>The output of the Rd function gets multiplied by the irradiance at the hit-point, the area covered by the hit-point (see octree section), and a Fresnel-transmittance factor (a function of the outgoing direction) to get the final output radiance for the query point.</p>
+                    <p>In our implementation, we actually calculate the diffusion approximation three times for each query point - one for each R/G/B channel.</p>
+                    <p>Below is our Jade dragon rendered with only the diffusion approximation. Notice how the dragon seems to have the appearance of light beneath its surface!</p>
+                    <div align="center">
+                        <img src="assets/img/diffuse_only.png" width="480px" />    
+                    </div>
+                </div>
+            </section>
+
+            <section class = "section-xlarge" id = "single-section">
+                <div class = "text" id = "single-text">
+                    <h1>Single Scattering</h1>
+                    <p>Single scattering is when a ray enters a material, bounces once, and then exits the material. A 2D representation of this process is shown below.</p>
+                    <div align="center">
+                        <img src="assets/img/single_fig.png" width="360px" />    
+                    </div>
+                    <p>We implemented single scattering according to the 2001 Jensen paper. The process is very similar to our implementation for direct lighting, but with a few twists.</p>
+                    <p>When the ray intersects the scene, we find a new point below the surface by tracing the ray further past it’s hit point for some depth determined by the properties of the material. Then, from this point we just sample the lights in the scene. We trace a ray directly from our subsurface point to the light, instead of refracting it through the material. This way of sampling circumvents the difficulty of trying to find incoming rays that intersect the ray we’re tracing under the surface. Finally, we multiply the typical incoming irradiance from the direct lighting process by the single scattering coefficient shown below.</p>
+                    <div align="center">
+                        <img src="assets/img/single_eq.png" width="360px" />    
+                    </div>
+                    <p>For the phase function p we used the Henyey-Greenstein phase function. We found that single scattering doesn’t create as strong of an effect as the diffusion approximation (as we would expect) and essentially acts as a replacement for our previous direct lighting, but with a brighter result, as if light was just below the surface. Below are some images that show single scattering at work. </p>
+                    <div align="center">
+                        <table style="width=100%">
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/single_drag.png" width="480px" />
+                                <figcaption align="middle">Exaggerated single scattering.</figcaption>
+                                <td align="middle">
+                            </tr>
+                            <tr>
+                                <img src="assets/img/skinpeter.png" width="400px" />
+                                <figcaption align="middle">Peter with skin BSSRDF and only single scattering</figcaption>
+                            </tr>
+                        </table>
+                    </div>
+                    <h1>Other Implementation Details</h1>
+                    <p>We added functionality to our collada file parser to take in the necessary material coefficients (g, sigma_s, sigma_a, diffuse color and index of refraction). Additionally, all other parts of the pipeline had to be updated to carry this information. Starting from the .dae file, then to the parser, then to material_info, poly_mesh, mesh, primitive, and finally intersection. We reused many of the .dae files from previous projects, created and edited some in blender, and downloaded a few from online model bases.</p>
+                    <p> To increase the quality of the final images, we also included combination BSSRDFs. Because we only use the BSSRDF for direct lighting, the BRDF could still be mirror, glass or diffuse. To get a specular jade dragon, we loaded in the BSSRDF of jade with a very low reflectance to create slight mirror BRDF properties.</p>
+                </div>
+            </section>
+
+            <section class = "section-small" id = "diff-section">
+                <div class = "text" id = "diff-text">
+                    <h1>Difficulties Encountered</h1>
+                    <p>We spent many hours rendering images that didn’t look the way we wanted them too. The reason for this is because there are so many variables that we had to adjust in order to get the image to look the way we wanted. In sampling the surface points, we had to adjust the number of points and the size of the Poisson spheres in tandem - doing this incorrectly could result in renders with strange brightness or noise. We could adjust the maximum radiance contribution from the single scattering component (if left uncapped, it was often too bright) as well as the ballpark-depth at which a scattering event occurred. We could also adjust the octree error tolerance, though we typically left this at 0, forcing each call of the Mo function to go to the leaves of the octree. Finally, we could adjust the material properties, including the absorption and scattering coefficients as well as the scattering direction.</p>
+                    <p>Listing all of the bugs we encountered could take up an entire writeup, but we will describe one particularly nasty one. Each of the points in the octree was stored via pointer, and when we inserted the points into the octree, we inserted them via a line similar to “for (Point p : vec) {octree->insert(&p);}”. But this line actually inserted the pointer to the temporary for-loop variable ‘p’ rather than the pointer to the actual point stored in the vector. This took a long time to find, and made us realize we need to improve our C++ skills.</p>
+                </div>
+                 </section>
+            <section class = "section-small" id = "lesson-section">
+                <div class = "text" id = "lesson-text">
+                    <h1>Lessons Learned</h1>
+                    <p>We were successful because we communicated often. Any time there was a bug or a clarification or a question, we immediately asked each other and quickly came to an answer. We met up to plan as well as to do important git merges and particularly difficult debugging.</p>
+                    <p>Writing code is small part of making a project work. Debugging is the bulk of the time and effort.</p>
+                    <p>Understanding the papers first made implementing the project much more straightforward. We were all on the same page about how to interpret the problems at hand.</p>
+                </div>
+            </section>
+            <section class = "section-title" id = "result-section">
+                <div class = "text-center" id = "result-text">
+                    <h1>Results</h1>
+                </div>
+            </section>
+
+
+            <section class = "pic-section">
+                <div class = "text">
+                    <div align="center">
+                        <table style="width=100%">
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/glossy_baby.png" width="480px" />
+                                <figcaption align="middle">Forward scattering with glossy BRDF Jade dragon</figcaption>
+
+                                <td align="middle">
+                                <img src="assets/img/max_combined.png" width="480px" />
+                                <figcaption align="middle">Marble Max Planck</figcaption>
+                            </tr>
+                        </table>
+                    </div>
+                    <div align="center">
+                        <table style="width=100%">
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/max_lambertian_nose.png" width="480px" />
+                                <figcaption align="middle">Lambertian Max Planck nose. Notice how the part of the nose not hit by light is completely black</figcaption>
+
+                                <td align="middle">
+                                <img src="assets/img/max_nose.png" width="480px" />
+                                <figcaption align="middle">Subsurface scattering Max Planck nose.</figcaption>
+                            </tr>
+                        </table>
+                    </div>
+                    <div align="center">
+                        <table style="width=100%">
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/g1.png" width="480px" />
+                                <figcaption align="middle">Full forward scattering, one channel</figcaption>
+                            </tr>
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/g5.png" width="480px" />
+                                <figcaption align="middle">Medium forward scattering, one channel</figcaption>
+                            </tr>
+                            <tr>
+                                <td align="middle">
+                                <img src="assets/img/g0.png" width="480px" />
+                                <figcaption align="middle">Evenly distributed scattering, one channel</figcaption>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class = "section-small" id = "ref-section">
+                <div class = "text" id = "ref-text">
+                    <h1>References</h1>
+                    <p>Jensen, Henrik Wann, and Juan Buhler. "A rapid hierarchical rendering technique for translucent materials." ACM Transactions on Graphics (TOG)21.3 (2002): 576-581.</p>
+                    <p>Jensen, Henrik Wann, et al. "A practical model for subsurface light transport."Proceedings of the 28th annual conference on Computer graphics and interactive techniques. ACM, 2001.</p>
+                    <p>Pharr, Matt, and Greg Humphreys. "Chapter 16." Physically Based Rendering: From Theory to Implementation. Amsterdam: Elsevier/Morgan Kaufmann, 2004. Print.</p>
+                    <p>McGuire M. “Meshes.” Morgan McGuire's Computer Graphics Archive.  26 Aug 2011. Web. 28 April 2016. http://graphics.cs.williams.edu/data</p>
+                    <p>"Optical Properties." mental ray Shader Reference. Autodesk, 2012. Web. 26 April 2016. http://docs.autodesk.com/MENTALRAY/2012/ENU/mental%20ray%203.9%20Help//files/shaders/node38.html</p>
+                </div>
+            </section>
+
+            <section class = "section-small" id = "resp-section">
+                <div class = "text" id = "resp-text">
+                    <h1>Contributions</h1>
+                    <h2>Beth</h2>
+                    <p>Implementation for sampling surface points, surface point visualizer, single scattering, Mo() function in the octree, website design, debugging, rendering.</p>
+                    <h2>Trevor</h2>
+                    <p>Diffuse approximation for 1ch & RGB, Octree creation (point insertion & initializing hierarchy via averaging child values), rendering & much debugging of course.</p>
+                    <h2>Becca</h2>
+                    <p>Collada file editing and processing, octree visualizer, rendering and debugging.</p>
+                    <br>
+                </div>
+            </section>
+        </div>
+    </body>
+</html>

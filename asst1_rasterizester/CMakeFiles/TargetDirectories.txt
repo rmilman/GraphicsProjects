@@ -1,0 +1,5 @@
+/Users/beccamilman/Desktop/asst1_rasterizester/build/src/CMakeFiles/rasterizester.dir
+/Users/beccamilman/Desktop/asst1_rasterizester/build/CGL/deps/glfw/CMakeFiles/uninstall.dir
+/Users/beccamilman/Desktop/asst1_rasterizester/build/CGL/deps/glfw/src/CMakeFiles/glfw.dir
+/Users/beccamilman/Desktop/asst1_rasterizester/build/CGL/src/CMakeFiles/CGL.dir
+/Users/beccamilman/Desktop/asst1_rasterizester/build/CGL/deps/glew/CMakeFiles/glew.dir

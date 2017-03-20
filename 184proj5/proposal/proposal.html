@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Becca Milman, Beth Marrone, Trevor Nesbitt  |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 5: Subsurface Scattering</h1>
+    <h4 align="middle">Becca Milman, Beth Marrone, Trevor Nesbitt</h2>
+    <div class="padded">
+
+    <h2 align="middle">Summary</h2>
+    <p>For our fifth and final project in CS184, we will extend our raytracer program from project 4 to support subsurface scattering. If successful, we will be able to render translucent materials by scattering rays through their surfaces. We are excited by the potential results and possible extensions of this project, but we are also mindful of the difficulty and time associated with our task.</p>
+    <h2 align="middle">Background</h2>
+        <p>The ray tracing algorithms we have implemented so far in this class has relied on the assumption that when light hits a material it either goes through or bounces off at the same place it entered. We used BRDFs (Bidirectional Reflectance Distribution Functions) to describe materials' reflectance. BRDF's take in an incoming vector and an outgoing vector and return the amount of incoming radiance that will reflect. This does not take subsurface scattering into consideration. Subsurface scattering occurs in translucent materials when light penetrates but does not always go through. When light enters a translucent material it goes in and reflects off the interior of the material multiple times before exiting again at different location than where it entered. In order to account for this, materials need to be modelled with a BSSRDF (Bidirectional Surface Scattering Distribution Function). This is a challenge to implement because in addition to integrating over all incoming directions and all outgoing directions for one point, we also need to integrate over an area where light could have scattered out at that point. Making this fast, unbiased, and realistic will take a good amount of thought and effort. Additionally, scattering does not just happen once, it can happen recursively (multi-scattering). Subsurface scattering is an important problem to solve because it expands the kinds of materials we can model by ray tracing from only opaque or transparent objects to any material in between. This includes skin, milk, leaves, marble, jade, wax, clay and many more materials that we interact with often. Pixar shorts, CGI effects, video games and many other graphics applications need a better estimate for materials than a BRDF to make believable worlds. Additionally, scattering is helpful in medical applications, in which volume can be measured by modeling  tissue and light interaction. Below is a working list of resources we plan on using. We may use more than listed here or less depending on how successful we are at rendering the basic effect.
+        <br><br>
+            (1) <a href="https://graphics.stanford.edu/papers/bssrdf/bssrdf.pdf">Stanford BSSRDF</a>,  
+            (2) <a href="http://graphics.ucsd.edu/~henrik/papers/fast_bssrdf/fast_bssrdf.pdf">UCSD Fast BSSRDF</a>,   
+            (3) <a href="http://graphics.ucsd.edu/papers/egsr2006skin/egsr2006skin.pdf">UCSD EGSR-2006-Skin</a>,  
+            (4) Maybe <a href="http://cg.cs.uni-bonn.de/aigaion2root/attachments/nagy-2003-depth.pdf">NAGY-2003-Depth</a>,  
+            (5) <a href="http://graphics.berkeley.edu/papers/Donner-EBM-2009-07/Donner-EBM-2009-07.pdf">Berkeley Donner EBM 2009</a>,  
+            (6) Maybe <a href="http://research.microsoft.com/en-us/um/people/yuedong/project/fabscat/fabscat.html">Microsoft Fabscat</a>
+        </p>
+
+    <h2 align="middle">Resources</h2>
+        <p>We will be coding on our own laptops, using the code from Projects 3 and 4. The cell rendering function will be especially useful for debugging because scattering takes a longer time to render. We have posted the relevant starter code on <a href="https://github.com/dashmn210/184proj5">GitHub</a> (if you cannot access it email one of us to allow you view permission).  Additionally, for our final renders we will use lab computers to take advantage of their graphics cards.</p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/schedule.png" width="480px" />
+                </tr>
+            </table>
+        </div>
+        <br>
+    <h2 align="middle">Goals and Deliverables</h2>
+    <em>General Goal and Examples of Intended Effect:</em>
+    <p>Our goal is to implement subsurface scattering. We plan to augment our current raytracer program to be able to approximate the way light interacts with translucent materials such as jade or skin so we can render realistic looking scenes with those materials. Below are some real-life images of the effect we’re trying to capture. Notice for the jade statue, for example, how the light seems to permeate to some depth into the surface of the material.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/jade.png" width="300px" />
+                    <figcaption><a href="https://p3.liveauctioneers.com/2899/84313/43509909_2_l.jpg">Sun through Jade statue</a></figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/ear.png" width="300px" />
+                    <figcaption><a href="https://c2.staticflickr.com/8/7505/15689563654_89433f78f2_z.jpg">Sun through Jade statue</a></figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/milk.png" width="300px" />
+                <figcaption><a href="http://dilka.xcdn.nl/artlarge/glas-groen-gerecycled-glas-melk-alleen-per-6-bestelbaar-2/article/70130532_2.jpg">Translucent liquids like milk</a></figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <em>Questions:</em>
+        <p>There are many questions and challenges posed by this project. Many of the high level questions we have are the same ones present in the paper we’re using as our main reference: How do we simulate this effect in an efficient way while making our images still appear realistic? How do we sample in area and direction while keeping our estimators unbiased?  What types of different subsurface scattering can occur? What is the behavior of rays scattering inside a homogenous surface in general?
+        <br>
+        In addition to these high level questions, we also have much more lower level questions purely dealing with the logistics of our program: How do we need to modify our dae files to work with translucent materials? What data do we need to collect to accurately represent our materials? </p>
+        <em>Quantification/Qualification:</em>
+        <p>
+        We intend to measure the quality of our simulation mainly through visual comparison. We will have multiple renderings of the scene, one with the full subsurface scattering system, one with only single scattering, one with only multiple scattering, and then one without any form of subsurface scattering. Additionally, we will render a scene with our full subsurface scattering implementation and compare that to the same scene rendered with a modeling program like Maya and see how their subsurface scattering compares to our own.         
+        <br><br>
+        We intend to quantify our simulation by measuring render time and by attempting to create a visualization for how many rays permeate our surfaces and how deeply. For the render time, we will once again render four different versions of the same scene (one with the full subsurface scattering system, one with only single scattering, one with only multiple scattering, and then one without any form of subsurface scattering) and measure the rendering time of each. For the visualization, we were considering making some sort of heat map centered on the boundary of a surface that would show how many rays on average are scattering into our surface, how deeply they’re scattering, and where they’re scattering to.
+        </p>
+        <em>What We Plan to Deliver:</em>
+        <p>We plan to deliver an augmented version of our raytracer that can simulate subsurface scattering as described in the Jensen et al. paper. This includes integrating the BSSRDF, doing single scattering evaluation for arbitrary geometry, and doing diffusion approximation for arbitrary geometry. These are the core components of the subsurface scattering simulation in the Jenson et al. paper that we feel are necessary in order to fully achieve the subsurface scattering effect, and we should have them working for at least one translucent material type. We also hope to have a report that at the very least has the visual comparison components mentioned in the <em>Qualify</em> section above, and the rendering time measurements mentioned in the <em>Quantify</em> section above.
+        <br>
+        We do have some hesitations. We’re concerned that, in addition to debugging the functions that physically model the subsurface scattering effect, getting subsurface scattering to work with our current raytracer could take some unpredictable amount of time. In this worst-case scenario, our program should still integrate the BSSRDF and do single scattering evaluation for arbitrary geometry, and maybe have diffusion approximation for arbitrary geometry fully implemented.</p>
+        <em>What We Hope to Deliver</em>
+        <p>If we are able to complete the above baseline plan with time to spare, there are many of exciting ways we plan on expanding our project! The following are a list of ideas we had for expanding our baseline program, listed in the chronological order in which we would implement them.
+            <ul>
+                <li><em>Using multi-layered translucent materials instead of homogenous materials:</em> In the 2001 Jensen et al. paper, we assume semi-infinite homogenous materials. <a href="http://graphics.ucsd.edu/papers/layered/">In a later paper</a>, Donner and Jensen make a better approximation for materials that are thin slabs, or materials like skin that are realistically composed of multiple layers.</li>
+                <li><em>Modeling our RGB wavelengths separately:</em> In the 2001 Jensen paper, they raytrace each of the R, G, and B rays separately to better model how these three types of rays have different frequencies, and therefore each travel through material with different indexes of refraction and different depths into the material.</li>
+                <li><em>Using subsurface scattering to simulate gases by modeling them as an extremely thin translucent material.</em></li>
+            </ul>
+            </p>
+</div>
+</body>
+</html>
+
+
+
+

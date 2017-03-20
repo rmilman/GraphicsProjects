@@ -1,0 +1,495 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Rebecca Milman  |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3: PathTracer</h1>
+    <h2 align="middle">Rebecca Milman</h2>
+
+    <div class="padded">
+        <p>Though physics describes light as a wave, light in raytracing graphics is modeled as a ray. For most applications, this approximation is accurate. A ligth ray has the same radiance at any point across it when traveling through a vaccuum. In our approximation, rays travel through other materials without losing radiance as well. This allow us to take light from a source and follow a ray to where it hits and render how that light reflects off that surface as ray that travels to the pixel we view it on. For ray tracing to make an accurate rendering, it depends on a few things. It needs to trace enough rays to fill in the picture and it needs the materials of the objects to have the reflection, absorbtion, scattering and refraction properties that model how they would really interact with light. Tracing enough rays is a battle with efficiency. Where are the best places to trace rays? You don't really need to sample a dark area too much, because not much light comes from there. How many do you trace per pixel or per light source? For a high definition image more rays per pixel can mean billions of rays. How many bounces do you allow them to have? Some light effects only show up with more bounces, but when these effects aren't prsent more bounces don't change the image very much. How do you know when a ray intersected something? You can send a thousand rays to find a needle, but not all of them hit the needle. How do you speed up the process? You don't need to check the air around the needle, just the needle. These questions have been answered in many ways with different benefits and costs. This project explores a few methods of intersection, sampling, ray depth, and modeling material properties.</p> 
+       
+
+    <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
+        <p>In order to generate an image from a scene of primitives, we need to send rays through a pixel in screen space into a three dimensional scene. We send rays from our camera, located at the origin in camera space, through our screen pixel by pixel. The rays need to be in world space, in terms of the 3D world the primitives are in. So for each pixel, we change the pixel into camera coordinates, using the x and y field of view angles, then we change that into a position in world coordinates. The ray the gets traced out starting at the camera and goes through that pixel, with minimum and maximum t values of where the camera would be able to see the ray. When multiple rays go through each pixel, their x ,y position in pixel space is randomly sampled within the pixel to get an unbiased estimate of the color of that scene, then the colors of each ray are averaged to get the color of that pixel. </p>
+
+        <p>Once a ray is sent into the scene, it can hit the objects and illuminate them. Finding these intersection locations is how we see the shapes of an object. To find out where a ray intersects a primitive, you can find their mathematical intersection. For example, a triangle is bounded plane in space that has a well defined geometry to test intersection with a ray. I used the Moller-Trumbore algorithm to find the interection. Putting a generic point p in terms of barycentric coordinates and a generic point p in terms of the ray, you can set these points equal to eachother and solve for the t parameter of the ray, and two of three barycentric coordinates (u and v) at which the points are actually equal. You can find the third barcentric coordinate using the other two because the three sum to 1. The Moller Trumbore algorithm takes advantage of linear algebra and Cramer's rule to solve for t, u, and v. Once you find the barycentric coordiantes, you can check they are in the triangle and within the range of the ray's t values. </p>
+
+        <p> Similarly, spheres are well-defined mathematically and you can find a sphere-ray intersection. However, spheres can have up to two intersections with a ray, so you need to check for which intersection happens first, along with the min and max t bounds of the ray.
+        Once you know where the intersection happens, you can store information about the intersection to access when getting color information. This information includes the t value of the hit, the object that was hit, the BSDF at the hit point, and the normal of the object at the hit point.</p>
+
+       
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p1_balls.png" width="480px" />
+                    <figcaption align="middle">Intersections with shading based only on normals of the primitive. Both triangles and spheres are in view.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p1_gems.png" width="480px" />
+                    <figcaption align="middle">Intersections with shading based only on normals of the primitive.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+
+    <h2 align="middle">Part 2: Bounding Volume Hierarchy </h2>
+
+        <p> Ray intersection tests can take a lot of unnecessary time if the ray doesn't hit anything, or if the ray has already hit something and should not hit anything else. One solution to this is creating a bounding volume hierarchy. Given all the primitives we can make larger cubes that contain them. If the ray intersects the cube, then you should check the primitives inside. If it doesn't, then the ray doesn't intersect anything and shouldn't be followed further. To make this even faster, each bounding box can be further subdivided. Checking intersections with boxes is easier than checking intersections with all the primitives in a box, so this is much more efficient.</p>
+
+         <p>My bounding hierarchy takes the bounding box containing all the primitives and finds the axis in which the box is the largest. The box divides evenly along this axis into left and right. Any primitives with centroid smaller than the halfway point of the axis will go into the left box and any larger go into the right box. If there are no primitives in one of the children, the halfway point becomes a one fourth point or a one eighth point etc. closer to the side with more children in an attempt to include more children on the other side. This stops after one sixteenth, at which point it just takes half of the primitives in the order they came in and puts them in the empty side. Though this is semi-random spatially, it is still effective overall because it does not happen often and each box is tested to double check the order the primitives are hit anyway. The bounding boxes stop dividing when there are max_leaf_size primitives in the box. 
+         </p>
+
+         <p> I mentioned that intersections of boxes are easier than intersections of primitives. One reason is because a box may contain many primitives and you would have to check each one. Another is because axis aligned planes have very simple intersection formulas, shown below. A box has 3 pairs of planes, a pair for each axis. That means a ray can intersect each axis in two places. The first is tmin and the second is tmax. However, the ray may intersect a plane on a place thats not part of the box. My bounding box intersection first finds tmin and tmax for x, y, and z. Then it uses these values to look for values that miss the box. For example, if ty_min is bigger than tx_max, that means the ray hit the planes outside of the box, shown in the picture below. After checking the two ways it can miss in terms of x and y, it finds the tmin and tmax between x and y. It repeats for z and uses this new min and max to find the true interval of where it intersects the box. </p>
+
+            <p>The axis aligned plane intersection formula. Here "i" is the axis, either x, y, z. T is where the ray intersect, pi is the axis coordinate of the point of intersection, oi and di are ith axis components of the ray's origin and direction. </p>
+            <p align="middle"><pre align="middle"> t_intersect = (pi - oi)÷ di </pre></p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/bbox.png" width="480px" />
+                    <figcaption align="middle">An example of how tmin and tmax can be used to show how a ray misses a box.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p2_lucy.png" width="480px" />
+                    <figcaption align="middle">This would have taken a very long time to render without a bounding volume hierarchy because of the number of primitives each ray would have to check for intersection.</figcaption>
+                </tr>
+            </table>
+        </div>
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p2_dragon.png" width="480px" />
+                    <figcaption align="middle">Another scene sped up by BVH.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+    <h2 align="middle"> Part 3: Direct Illumination </h2>
+
+    <p>Before explaining direct illumination, it's helpful to explain what as Bidirectional Scattering Distribution Function (BSDF) is. A BSDF takes in ingoing direction and notes how much light would go in an outgoing direction. Effectively, it defines how materials handles light. For a diffuse surface, incoming light is scattered evenly in all directions. This is used to show direct lighting for simplicity. </p>
+
+    <p>Direct illumination is only using the initial rays from a light source to render a scene, not any subsequent reflections. To implement direct illumination, you can vary the number of samples taken from the light source.  To get the light on a point, you integrate the radiance from that light source times cosine of the angle it hits the point from the normal times the BSDF of that material, over every direction the light could be coming from. However, this isn't always a direct light source in every direction. To be more efficient we can only sample where we know lights are and only integrate over the area where there are lights. For every light, we can take a number of random samples of how much of that light is getting to that point. Because we are taking these random samples, we must divide the the probability of getting that direction so that our overall estimation is unbiased. This is a powerful notion in computer graphics called Monte Carlo integration. Monte Carlo allows us to get a sample that is on average the same as what we should get but we can take fewer samples. The samples we take can be ones that contribute more to the sample, like a bright light source as opposed to a shadow. Taking different numbers of samples from each light changes the image quality. Below is an exploration of how more light samples improve soft shadows. Taking more light samples reduces noise because it reduces the variance at a given place. We get more information about the light at the point to average over (dividing by the number of samples).</p>
+
+    <p>Also, we need to check if the light ray is blocked by another object first, causing a shadow. Before adding a sample, the implemenation checks for an intersection of the ray coming from the object hit point to the light and any objects in the BVH. This was one of my major bugs. I used an incorrect intersection function and passed in the wrong BVH, resulting in no shadows (picture shown below). </p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt3_l1.png" width="480px" />
+                    <figcaption align="middle">This image only sample the light source once. Notice how noisy the shadows on the balls are.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt3_l4.png" width="480px" />
+                    <figcaption align="middle">This uses 4 samples per light. The shadows are less noisy. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt3_l16.png" width="480px" />
+                    <figcaption align="middle"> 16 samples per light. Pretty nice soft shadows.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt3_l64.png" width="480px" />
+                    <figcaption align="middle"> 64 samples per light. The shadows here are quite smooth.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p3_noshadow0.png" width="480px" />
+                    <figcaption align="middle">A bug in which there are no shadows because I used an incorrect intersection function and passed in the wrong BVH.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt3_DL.png" width="480px" />
+                    <figcaption align="middle">Healthy direct lighting on a bunny. Area light source.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt3_dragon.png" width="480px" />
+                    <figcaption align="middle">Healthy direct lighting on a dragon, point light source.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+    <h2 align="middle">Part 4: Indirect Illumination </h2>
+        <p> Indirect lighting is a similar concept to direct lighting except anything can be a light source because everything reflects some amount of light. However, if everything reflects on everything, every reflection cause more light on an object which will cause more light on the object that object help light. It becomes a recursive problem. To handles this, we limit the number of bounces a ray can do with max ray depth. To get the incoming radiance at a point, I randomly sample the BSDF to get a random incoming ray, later weighted by its pdf to keep an unbiased sample. I trace the random incoming ray recursively until max depth. However, doing this for every ray takes along time because it essentially multiplies the the number of rays by the ray depth. Instead, we can importance sample using Russian Roulette. If the outgoing direction on the BSDF doesn't reflect much, it won't contribute to get a really accurate incoming ray. However, if there happens to be a sharp reflection, and accurate incoming ray will change the image a lot. Therefore, based on the sample of the BSDF at the outgoing wave, we can choose how likely it is that we will continues tracing a ray. This helps kill unhelpful rays early. This will change the bias of the overall integral unless we divide by the probability we keep the ray.
+        Once we have an estimate of the incoming light weight by its probability, we find the outgoing light the same way as direct lighting, integrating the incoming light times the cosine of direction angle and the BSDF sample. Direct lighting with indirect lighting is called global illumination. Below are a few samples and some exploration of what max ray depth and number of pixel samples does to a scene. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_global1.png" width="480px" />
+                    <figcaption align="middle">Global Illumination on the dragon.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_global2.png" width="480px" />
+                    <figcaption align="middle">Global Illumination on the lambertian spheres.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_onlydirect.png" width="480px" />
+                    <figcaption align="middle">Only direct lighting on the lambertian spheres.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_onlyindirect.png" width="480px" />
+                    <figcaption align="middle">Only indirect lighting on the lambertian spheres.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part4_bunny_1_4_5.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 5, and pixel sampling 1. This image is quite noisy.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part4_bunny_4_4_5.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 5, and pixel sampling 4. We see that more samples gives us less variance. Its a more accurate sample.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part4_bunny_256_4_5.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 5, and pixel sampling 256. The image is less noisy.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part4_bunny_1024_4_5.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 5, and pixel sampling 1024.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_bunny_d0.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 0, and pixel sampling 16. It is just direct lighting.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_bunny_d1.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 1, and pixel sampling 16. The ceiling is lit because the light bounced back up.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_bunny_d2.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 2, and pixel sampling 16. We see more red and purple reflected onto the bunny.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_bunny_d6.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 6, and pixel sampling 16. A bit lighter overall.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/pt4_bunny_d100.png " width="480px" />
+                    <figcaption align="middle">The bunny with lighting sampling of 4, max_ray_depth 100, and pixel sampling 16. A converged image, more bounces will not change very much after this, the amounts are quite small.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+    <h2 align="middle">Part 5: Materials </h2>
+        <p>As mentioned in part 3, the BSDF is what determines how different materials appear to reflect light. For this part, I explored two materials: mirror and glass. A perfect mirror reflects light that comes in from an angle i from the normal and puts it out at angle o from the normal, where these two angles are equal. Given an outgoing vector you can just as easily calculate the angle it came in from, as shown in the below formula.</p>
+            <p align="middle"><pre align="middle"> wi = 2*wo•n-wo </pre></p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/mirror.png" width="480px" />
+                    <figcaption align="middle"> Incoming theta = outgoing theta.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <p> With a reflect helper function that finds wi given wo, my mirror BSDF just sets the probability of getting wi to 1 because that is the only direction that would give a value back. Then it takes the reflectance of the mirror and divides by cosine of the angle between the incoming vector and the normal by the definition of the BSDF. </p>
+
+        <p> For the glass BRDF, I used the reflect helper function and a refract one. Refraction occurs according to Snell's law. Light that hits a surface with a different index of refraction than the material its currently in will bend because it has to change speeds. A picture is shown below. At certain angles, when going to a higher index of refraction, light will actually bend enough that it won't actually go into the material, it will only reflect. This effect is called total internal reflection. If this occurs, the glass just reflects like the mirror. If this does not happen, the some light will reflect and some will refract. Technically, this happens per ray, but we estimate it as some rays totally reflect and some totally refract in a certain proportion. This proportion is dependent on the angle of the outgoing light, because glass is a polarized material. The Fresnel equations dictate the exact polarization, but for our purposes, Schlick's approximations works. Given his estimated proportion, I reflect or refract the light and appropriately weight it by the proportion. Then I use reflectance weighted by cosine for reflection or transmittance weighted by cosine and the ratios of index of refractions squared for refraction to return the BSDF sample. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/snell.png" width="480px" />
+                    <figcaption align="middle"> A diagram of a ray refracting according to Snell's Law. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/snellformula.png" width="480px" />
+                    <figcaption align="middle"> Snell's Law. </figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p> I had a lot of difficulty with the refract helper function. Finding the outgoing angle of wi in the refraction helper function was a bit tricky geometrically. I used an implementation that removed all trig functions from Snell's law in order to calculate wi. However, it used different conventions for the normal directions, so there were a few sign changes. I also had difficulty figuring out which index of refraction was which until I drew out a picture of the outgoing vector and talked it over with Ren.</p>
+
+        <p> Below are a few pictures of the many bugs I had during the refraction part. </p>
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p5_error1.png" width="480px" />
+                    <figcaption align="middle"> Upside down reflection on the inner ball and black values for refraction on the outside. It's also in black and white. This has few bugs mixed together. Basically refraction has too dark values and the no/ni values are incorrect causing weird angles for the outgoing light. I was also missing an absolute value on one of my cosine thetas.</figcaption>
+                </tr>
+            </table>
+        </div>
+        </div> 
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p5_error7.png" width="480px" />
+                    <figcaption align="middle"> This has a few problems. It appears there are two nested reflections and also there is patchiness that I describe in the next image.</figcaption>
+                </tr>
+            </table>
+        </div> 
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/p5_error9.png" width="480px" />
+                    <figcaption align="middle"> This was the bug I had for the longest time and was hardest to catch, and only did with the help of office hours. I was not initializing pdf values in the glass BSDF function which led to random weighting for each thread that was running.</figcaption>
+                </tr>
+            </table>
+        </div>              
+        <p> Below is an exploration of how max ray depth effects the mirror and glass balls.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_0_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 0. Notice that this is just direct lighting. Light has hit the ball surface but has not yet reflected any of the surroundings.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_1_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 1. We start to see reflection happening on both balls because the rays have taken the surroundings into account through indirect lighting. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_2_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 2. Refraction has occured for the glass ball here. The light had to hit the ball, hit the surroundings and refract inside the ball, so it needed depth 2. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_3_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 3. The light that refracted in the ball is now coming out of the ball as a caustic, the bright light under the glass ball. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_4_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 4.The caustic has reflected onto the wall. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_5_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 5. More accurate indirect lighting. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_6_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 6. More accurate indirect lighting. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_7_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 7. More accurate indirect lighting. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_4_100_i24.png" width="480px" />
+                    <figcaption align="middle">1024 pixel sampling, 4 light sampling, depth 100. Convergence of indirect lighting, more depth will have very little effect on the image. </figcaption>
+                </tr>
+            </table>
+        </div>
+     <p> Below is an exploration of how pixel sampling effects the mirror and glass balls, given their max depth value is 100 and the light sampling is 1.</p>
+     <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1_1_100_i24.png" width="480px" />
+                    <figcaption align="middle">1 ray sample per pixel. A noisy image.</figcaption>
+                </tr>
+            </table>
+        </div>
+     <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_4_1_100_i24.png" width="480px" />
+                    <figcaption align="middle">4 ray sample per pixel. Less noisy.</figcaption>
+                </tr>
+            </table>
+        </div>     <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_16_1_100_i24.png" width="480px" />
+                    <figcaption align="middle">16 ray sample per pixel. Less noisy.</figcaption>
+                </tr>
+            </table>
+        </div>     <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_64_1_100_i24.png" width="480px" />
+                    <figcaption align="middle">64 ray sample per pixel. Getting clearer.</figcaption>
+                </tr>
+            </table>
+        </div>   
+          <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part5_spheres_1024_1_100_i24.png" width="480px" />
+                    <figcaption align="middle">1024 ray sample per pixel. Much more high quality. Could be improved a bit by sampling the light more as explored in part 3.</figcaption>
+                </tr>
+            </table>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/drgl.png" width="480px" />
+                    <figcaption align="middle">A final shiny dragon. Raytracing is cool.</figcaption>
+                </tr>
+            </table>
+
+  
+</div>
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,273 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Rebecca Milman |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 4: Lens Simulator</h1>
+    <h2 align="middle">Rebecca Milman</h2>
+
+    <div class="padded">
+        <p>This project simulates camera lenses built on top of a ray tracing program. For the most part we can use our original ray tracing, but now we trace through a series of lenses through which light refracts due to changes in index of refraction. Now, light is going to the sensor through a hole with a diameter of the aperture instead of through a pinhole and then onto the sensor. This allows for depth of field to come into play, because light can be focused on some objects, and made out of focus for others; depending on where the sensor plane is and where the object is. This is opposed to a pinhole, where everything is in focus. This project will explore a few key topics of raytracing through camera lenses including focus, aperture, sampling, refraction, and ray generation. </p> 
+
+
+    <h2 align="middle">Part 1: Tracing Rays Through a Lens</h2>
+        <p> In addition to the normal ray tracer, this project contains the ray tracer for the camera lens elements. For this, the rays must go from the sensor into the lens and out into the world before going back. The lens tracer helps generate rays that go into the world. If we only ray traced through glass objects, there would be internal reflection and extra bounces, and these would be too complex to model. Tracing through lenses only involves sphere intersection, with the spherical lenses, and refraction that handles index of refraction, switching depending on the direction of the way. It is also important to track the aperture's size because rays can only go through it. Additionally, if ray misses a lens element, it should not be traced further. In a real camera, this would be equivalent to hitting the black interior of the lens body.</p>
+
+        <p>As introduced before, pinhole cameras and lens systems have some critical differences. First, the light coming through the aperture, which is a hole of a certain size, as opposed to just a point for a pinhole, changes the light. What does it change? For a pinhole, light coming through a point will go to one place on the sensor, so each pixel will be a single value compromised of light from many directions. For an aperture, light from one place in the world is going to many places, and this can cause blur. For an object conjugate to the sensor plane, this light will still come to a point and be in focus, but other depths will be blurred. Note that the distance between the aperture and the sensor plane determines the focus of an image. This is another key difference between pinhole and lense. Changing sensor depth for a pinhole would only zoom the image in or out, not change its shape or blur. Some effects that you would see in a lens camera, but not a pinhole, include depth of field, blur, and distortion (like in fish-eye). Depth of field is the depth that objects appear clear in, for a pinhole, it is all depths. Distortion is when an image warps because the lens curvature bends the rays dramtically when coming in. Lens cameras allow the photographer to make artistic choices about how to arrange their images. </p>
+
+        <p>Understanding sphere intersection is helpful to seeing how a lens refracts a ray. The ray intersects a sphere in two places, but a lens is only part of a spherical object. If the lens is convex to the sensor, the radius will be negative, by convention, and the place the ray would hit is the earlier of the hit points. If the ray were coming from the other side it would hit the second hit point. This outcome is reverse for a lens concave to the sensor, having a positive radius. It was initially switching these cases that led to the bug in the pictures below. Once this hit point is chosen, the normal must be calculated relative to the center. The normal is what the light refracts relative to. Once you know the hit point, the normal, and the incoming ray direction, you can refract the light. My refraction  implementation depends on the incoming ray and the normal going opposite directions. Once I set this, it was easier to figure out index of refraction for forward rays, coming from the sensor, and backward rays, coming from the world. Refraction occurs according to Snell's law. In this case, when total internal reflection occurs, I do not keep tracing the ray, because there isn't actual light coming from the sensor. These rays are just to find where they enter the world and come back. </p>
+
+        <p>In the pinhole camera, we found the rays to trace into the world by taking a point on the sensor and sending it to the pinhole. In this case, there's an aperture, so there are two places to sample. First, sample the sensor plane, then sample the aperture. These two points form the direction of the ray before sending it into the lens system.The aperture is circular, so I had to be careful to sample uniformly in the area to get (x,y) coordinates. More detail is explained below. The rays traced out are of the last lens element are the ones that go into the normal ray tracer that will render the scene. </p>
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/sample.png" width="480px" />
+                    <figcaption align="middle">To uniformly sample the circle, I sampled a radius randomly from zero to one and then took its square root, and then weighted it by half the aperture. I also sampled the angle, theta, from zero to one and weighted it by 360 degrees. Then, using trigonometry, I found the coordinates (x,y). To get z coordinate, I approximated the plane that the aperture is on, relative to the sphere. It would be where the aperature circle would be bounded by the spherical lens.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+
+        <p>To see some of the ways lenses can distort rays, we can examine the refraction of sample rays through a lens. Below are images of rays going through a lens and coming together to a conjugate point. A conjugate point is the place in the world that will be in focus on the sensor. As the sensor moves closer to the infinity focus point, the conjugate point will move closer to infinity. As the sensor moves closer to the near focus point, the conjugate point will move closer to the lens. This relationship is defined by the lensmaker's equation. Our lenses are actually many lenses combined, and would have these effects compounded through each element. However, the basic inversion relationship is the same with an effective focal length.
+        </p> 
+          <p>This is the lensmaker's equation, where zi and zf are distances from the lens: <b>1/zi + 1/zf = 1/f</b> </p>
+             <p align="middle" ><pre align="middle"></pre></p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/conj_point.png" width="480px" />
+                    <figcaption align="middle"><br>These are theoretical conjugate points. You can see how rays coming from infinity focus at the infinity focus point and rays coming in from other distances focus further out, closer and closer to the near focus.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <br>
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/refract_error.png" width="480px" />
+                    <figcaption align="middle">Sphere intersection bug. It intersects on the outer radius of the first element and bounces back. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/conj_point1.png" width="480px" />
+                    <figcaption align="middle">Conjugate points for the D-Gauss lens. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/conj_point2.png" width="480px" />
+                    <figcaption align="middle">Conjugate points for the wide-angle lens. Notice they are more extreme than the Gauss lens.</figcaption>
+                </tr>
+            </table>
+        </div>
+                <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <div style="width: 480px; height: 320px; overflow: hidden">
+                    <img src="images/conj_point3.png" width="480px" />
+                    </div
+                    <figcaption align="middle">Conjugate points for the telephoto lens. It is good at focusing at things far away.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/conj_point4.png" width="480px" />
+                    <figcaption align="middle">Conjugate points for the fish eye lens.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div style="height: 20px; overflow: hidden">
+        </div>
+
+        <p> Below is a table that shows focal length, infinity focus, close focus, and the location of the closest object that can be focused on with near focus. Note that the range of the in-focus object varies from infinity to the near focus object. Reasonable sensor depths vary from infinity focus to near focus. Near focus is defined as the farthest place the sensor will be able to focus at the closest possible object that lens can resolve. Infinity focus is defined as the closest the sensor should ever to be the the lens so that it will focus on objects far in the background. Focal length is defined as the distance between the infinity focus and the place that the light rays effectively refract. This place is where a parallel ray from infinity would intersect its final refracted ray. Shown directly below. P' is the effective refraction plane. </p>
+         <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/focus_params.jpg" width="480px" />
+                    <figcaption align="middle">P' is the effective refraction plane and F' is the infinity focus. |P'-F'| is the focal length, f'.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/table1.png" width="480px" />
+                    <figcaption align="middle">Near focus, nearest object focus, infinity focus and focal length for each lens. Notice how close an object can be for fish-eye and how far an object has to be for telephoto.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p> I calculated the focus depth conjugate for my sensor depth not using an equation, but by using the function I wrote to trace rays through the lenses. I use a test ray starting at the sensor depth and going up at a slight angle (about aperture/500). The ray goes up at an angle through the lens and is refracted down to the z axis again, forming the sensor's focal point. If this angle is too large, the only intersection of the ray will be the ray's origin (a bug I ran into). Below are graphs for each lens comparing sensor depth and focus depth, ranging from close focus to infinity. Notice how they are inverses as the lensmaker's equation predicts. 
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/dGauss_graph.png" width="480px" />
+                    <figcaption align="middle">D-Gauss lens's sensor depths and corresponding conjugate points. An inverse function.</figcaption>
+                </tr>
+            </table>
+        </div>
+                <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/wide_graph.png" width="480px" />
+                    <figcaption align="middle">Wide angle lens's sensor depths and corresponding conjugate points. </figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/tele_graph.png" width="480px" />
+                    <figcaption align="middle">Telephoto lens's sensor depths and corresponding conjugate points. Notice it can't focus on things very close up, compared to other lenses, especially the fish-eye.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/fish_graph.png" width="480px" />
+                    <figcaption align="middle">Fish-eye lens's sensor depths and corresponding conjugate points. Notice it can focus very close the the lens. You can see how closely it approaches zero, which is approximately at the lens.</figcaption>
+                </tr>
+            </table>
+        </div>
+    <div style="height: 20px; overflow: hidden">
+    </div>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/manual.png" width="480px" />
+                    <figcaption align="middle">Manually focused dragon. You can see the slight depth of field blur. </figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p> The above image is much noisier than it should be. This is because of a bug in generate ray that was not resetting the origin of a ray that missed the lens. Anytime a ray misses the lens, it is not worth tracing because it won't hit the scene, but this will mean fewer rays to gather information about the scene. Thus, a noisier image. Instead, when a ray misses, I generate a new ray that hopefully won't miss. If there are more than 20 attempts and the ray still misses, this means that angle from the sensor is probably too extreme for this lens, so it is best to just send a ray backwards away from the sensor. In the normal ray tracer, all these attempted rays will cause a biased estimator of light, so the rays that do get traced need to be weighted by the numbers of tries to account for this. My bug was that I was not resetting the new rays so they were sampling from the exterior of the lense instead of the sensor. This caused all the noise because the rays traced from the lens did not trace back to the sensor.</p>
+
+        <p> Lastly, the light is coming through a rounded lens onto a flat sensor. This means there is an additional cosine to the fourth term need to attenuate the light. If the direction the ray comes in is really harsh, there will be less light coming from that ray, by Lambert's cosine law. You can see this effect most in the fish eye lens because it has the most lens curvature. Below is a picture with the fall off implemented. You can see the edges are slightly darker than other parts of the scene. The edges have the most extreme angle so they will have the largest decrease in brightness.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/fish.png" width="480px" />
+                    <figcaption align="middle">Cos^4 factor makes the edges darker.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+
+    <h2 align="middle">Part 2: Autofocus</h2>
+        <p> Before taking a picture, its useful to set the focus so you know that your subject will be clear. There are couple ways to do this. Manually, you can change the sensor depth and just guess where it looks best, as shown in the image above. Automatically, you can choose the place you want to focus on and have the computer find the best focus. What is a good measure of focus? Variance in small location with a sharp edge is a good measure. The idea behind this is just that a blurry area has low variance because all the colors are mixed while a focused area has high variance because of the color changes in the patch. Another good measure is a contrast-based system, but that is more complicated to implement. I implemented the variance auto focus. In a small patch with an edge, I added up every pixel's color in each of red, blue, and green. For each color, I used the variance, defined as the expectation of the square of the value minus the mean. I summed the variances from each color and divided by 3. For each sensor depth between the near-focus and the infinity focus, I re-rendered that patch and found its variance. The patch with the highest variance was the best sensor depth to focus at that place. However, there a couple issues with this implementation. Focusing on a small patch is okay, unless the zoom by changing the sensor depth shifts that small patch enough to focus somewhere else. Additionally, the change in zoom makes it hard to choose where to put your patch before autofocusing. Variance changes a lot in a patch per render, so a sensor depth that is wrong may have an especially high variance on that render while the right one may have an exceptionally low variance on another. This could mean choosing an unfocused depth. When it is clear the max has already been found, I stop trying new sensor depths. The metric for this is if the current focus depth is less than half the current maximum metric.</p>
+        
+        <p>Here is plot of the following patch through the Gauss lens getting focused on. At each sensor depth, variance is calculated at relatively high sample settings (16 area light, 16 rays per pixel). The max is where the focus should be set.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/patch.png" width="480px" />
+                    <figcaption align="middle">Sample patch. Should have a sharp line that the autofocus will detect high variance for.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/variance.png" width="480px" />
+                    <figcaption align="middle">A graph showing the variance in that patch as a function of sensor depth. Notice that its bumpy. Every re-render is an estimation of the light there so it will vary and so will its variance. The maximum should be where that patch is in focus, but the change in variance makes that a bit uncertain.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p> Here are a few high quality shots made using autofocus, one for each lens. 
+        </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/gauss.png" width="480px" />
+                    <figcaption align="middle">Double Gauss lens, with focus on the mouth. Notice the tail is blurry because of depth of field. There is a small range around the face that is in focus, while the rest focuses behind the sensor causing blur. Notice this image is still noisy because I had not fixed the ray origin bug when this was rendered.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/wide.png" width="480px" />
+                    <figcaption align="middle">Wide angle shot.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/tele.png" width="480px" />
+                    <figcaption align="middle">Telephoto lens. Shot from a large distance because telephoto's near focus is quite far. Very little of the background is in view, because the telephoto has a narrow field of view.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/fish.png" width="480px" />
+                    <figcaption align="middle">Fish-eye lens. Shot very close to the dragon but lots of the background is in view. Notice how distorted the image is.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+</div>
+</body>
+</html>
+
+
+
+

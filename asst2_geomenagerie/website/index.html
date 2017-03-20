@@ -1,0 +1,347 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Rebecca Milman |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 2: GeoMenagerie</h1>
+    <h2 align="middle">Rebecca Milman</h2>
+
+    <div class="padded">
+        <p> This project deals with the basics of three-dimensional geometry in graphics. Meshes are the main way three-dimensional objects are represented as a data structure. They consist of parts that are connected to each other similar to a linked list. Each mesh is made up of polygons with faces that share vertices and edges. Most meshes favor triangles or quadrilaterals because they are easier to smooth and make for more regular, consistent meshes. The half-edge data structure is the key component for iterating through meshes. It keeps track of a vertex, edge, face, next half-edge and "twin" half-edge. Vertices, edges, and faces only keep track of one half-edge. Half-edges are the glue that holds the mesh together. Once the mesh is constructed, edges can flipped and split to change geometry, normals can be calculated to help shading, the mesh can be subdivided to become higher resolution, and the object can be shaded. Below, I go into more detail about how to do all of this.
+
+
+    <h2 align="middle">Part 1: Fun with Bezier Patches</h2>
+        <p> The first input to the mesh is just a series of vertices. Each 4x4 patch of vertices form a small control cage that can be interpolated across to make smaller triangles. These triangles will form the mesh. To make a bezier patch, I took evenly spaced triangles along a flat 8x8 square. For each of these triangles, I found their 3D vertex positions by evaluating them with the actual vertices of the control cage. I used Bernstein polynomials for the interpolation scheme. Bernstein polynomials of the third degree essentially interpolates a cubic polynomial that includes the two end points and uses the the two middle points as an approximate slope. These four points form a cubic Bezier curve. With sixteen points, I got four bezier curves and then interpolated across the other way to get a bezier patch. Bezier curves go higher than cubic in degree, but it gets less easy to control the shape, hence breaking up the mesh into 4x4 patches. </p>
+        <p>
+        I had a bug here in which I used 1/8 instead of .125 and got a very sparse bezier patch, seen below, because my patches whent from 0 to 1 instead of 0 to .125 to .25 to etc.</p>
+        <div align="left">
+            <table style="width=30%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/bez.png" width="800px" />
+                    <figcaption align="middle">A correct bezier patch teapot.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=30%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/intNot.png" width="800px" />
+                    <figcaption align="middle">Floats sometimes round to 0 when you initialize them as fractions. Here is a single patch teapot.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+    <h2 align="middle">Part 2: Average normals for half-edges meshes</h2>
+        <p>Shading uses normals to figure out which direction the shape is relative to the light and the viewer. When normals are from each triangle, shading is choppy because you can see where the triangles change. Instead, vertex normal shading helps to smooth by averaging across nearby triangles' normals. It then interpolates the color across a triangle from each vertex, which is why it looks smooth. To get the vertex normal, I used the halfEdge data structure to find the neighboring triangles' vertices. With these I got two vectors for each triangle to take a corss product which yields the normal. Adding all the normals and dividing by the number of triangles will lead to a area weighted average because the normals were not normalized. See below for the difference in choppiness.</p>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/withQ.png" width="800px" />
+                    <figcaption align="middle">Teapot with normals averaged to vertices.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/withoutQ.png" width="800px" />
+                    <figcaption align="middle">Teapot with normals on each plane.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+    <h2 align="middle">Part 3: Edge Flip</h2>
+        <p>Here, I implemented the edge flip using the halfEdge data structure. Editing a mesh by flipping an edge is a useful tool to change the shape of an object. To flip an edge, one must reassign all the pointers that once connected it to a specific part of the mesh and reattach those pointers to the new part of the mesh. This involves checking that the flipped edge's half edges point to the right face, vertices, nexts, twins, and edge. The edges that do not flip also have to be adjusted. No new elements are added to the mesh here, they are just reassigned. </p>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/edgeFlip.png" width="800px" />
+                    <figcaption align="middle">A few edge flips on the Utah teapot.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+    <h2 align="middle">Part 4: Edge Split</h2>
+        <p>Similar to part 3, edge splits help to change the mesh geometry and will later help to subdivide meshes. Edge splits are a bit more complicated, however, because they involve adding new elements and reassigning their surroundings to fit them in. Edge splits need a new vertex, new edges, new halfedges, and new faces. Border edges are a bit tricky because they do not split into two triangles in half, only one. For extra credit, I implemented the border split. Its similar, but with a few less new elements. See examples below.</p>
+        <p>I had a few bugs here that did not appear until I tried to subdivide. It turns out that I was not reassigning all the elements properly. Additionally I was averaging the new vertex's position using all four vertices, not just the two on the edge. Bug pictures below!</p>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/edgeSplit1.png" width="800px" />
+                    <figcaption align="middle">Edge Splits in the Utah Teapot. </figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/edgeSplit2.png" width="800px" />
+                    <figcaption align="middle"> Edge Splits on a border.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/splitIssue.png" width="800px" />
+                    <figcaption align="middle"> Edges not getting reassigned properly. </figcaption>
+                </tr>
+            </table>
+        </div>
+        
+
+    <h2 align="middle">Part 5: Upsampling via Loop Subdivision</h2>
+        <p>Upsampling in a mesh is essentially making the mesh better resolution. It will also smooth the surface further because the triangles will become smaller. In order to upsample, one must split every edge and then flip edges that touch an old and new vertex to keep the mesh triangles somewhat uniform. To get the vertex locations for all the new vertices, the nearby vertices are weighted and averaged together with simple, constant coefficients. To see the smoothing journey of a cube and the effect of presplitting edges, follow the pictures below.</p>
+        <p>This part was most difficult for me as far as debugging because it uncovered issues in splitEdge. After fixing split edge, I also found that when I was iterating through the edges to split them, I was actually skipping some because my place in the for loop was off once the new edges were added. This was solved with the use of while loop that updated the next edge and saved it first so that no new edges would effect the next edge. I also tried to implement the subdivision for borders during this part and got some fun bugs when I reassigned the wrong positions for the vertices. The way I weighted the new vertices was just using the ones sharing an edge so that they would not be pulled in. In the end, I did not complete this successfully because I could not located the bug. I suspect is has to do with the borders of the beatle.dae not recognizing they are boundaries and wrongly updating vertex positions as if they aren't though. See bug pictures below.</p>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/curveCubeL.png" width="800px" />
+                    <figcaption align="middle">The cube after being subdivided. Notice that it is irrregular. This is because the edges go across the cube diagonally and tend to skep the cube diagonally. To solve this, you can just split each edge on each face.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/evenSplit.png" width="800px" />
+                    <figcaption align="middle">This is how you should split the edges.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/symCube.png" width="800px" />
+                    <figcaption align="middle">Ahh, a symmetrical, curved, subdivided cube, resulting from even edge splits before subdividing.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/preSplit1.png" width="800px" />
+                    <figcaption align="middle">Now, let's look at the curviness of the cube. Just the front face being pre-divided makes the subdivision flatter on that face.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/preSplit2.png" width="800px" />
+                    <figcaption align="middle">The front being subdivided a lot makes the face flat even after subdividion. This is because plain edge splits do not change vertex positions while subdivision averages nearby ones, which ends up curving the surface.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/wrongV.png" width="800px" />
+                    <figcaption align="middle">The beetle after subdivision with the wrong vertex positions.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/borders2.png" width="800px" />
+                    <figcaption align="middle">The beetle after subdivision with the wrong vertex positions, now they are all zero.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/borders.png" width="800px" />
+                    <figcaption align="middle">The vertices still have the wrong positions, they are slightly pulled inward.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/coolbug1.png" width="800px" />
+                    <figcaption align="middle">This is just a fun image I made when by subdividing without flipping edges. The split edges are also slightly pulled inward because they were weighted incorrectly.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+      <h2 align="middle">Part 6: Fun with Shaders </h2>
+
+        <p>Shaders use normals of the surface, the location of the light and the location of the viewer to approximate how light affects the color of the object. Because light intensity drops off as one over r squared, the distance the light is from the vertex matters. The angle the light comes in also matters because harsh angles mean fewer photons are bouncing off. Phong shading takes ambient light, diffuse light and specular light into account. Ambient light is the constant amount of color on the object regardless of the light source. Diffuse light is light that is scattered in all directions and is constant with regards to the viewer. It only depends on the angle it is hitting the object and the distance the light travels from. If the light hits at a 0 or 180 degree angle, no light will be on that triangle. If the light hits at a 90 degree angle, all the light's intensity will be on the triangle. Specular lighting accounts for highlights and depends on the viewers location inaddition the the light's location. The bisector between the light vector and the viwer vector dotted with the normal accounts for how intense the highlight is. Additionally, material properties affect this value. Environment mapping is another kind of shading. It uses the direction of the viewer and the normal to calculate the reflection angle of something in the environment. By mapping this vector into spherical coordinates and indexing into a texture map, one can get the color of the environment at that reflection angle and put it onto the object.</p>
+         <p>I also implemented a few of my own shaders. One is called invEnvironment. It takes in what environment mapping outputs and subtracts the vector from 1. This inverts the colors. Another one is called iri, short for iridescent, though it is not actually iridescent. It uses Phong shading and then manipulates the red green components of the vector with a sine and cosine respectively to vary the colors across the object. The last shader I created is called trigBeauty because it uses trig functions to manipulate the pattern of the object. It applies trig functions to the normal then applies Phong shading with the edited normal to created a pattern. After that, I reapply the original Phong shading to simply shade the patterned object. See below for the shaders.</p>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/phong2.png" width="800px" />
+                    <figcaption align="middle">Phong Shading.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/env2.png" width="800px" />
+                    <figcaption align="middle">Environment Reflection Shading.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/inv2.png" width="800px" />
+                    <figcaption align="middle">Inverse Environment Shading</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/iri.png" width="800px" />
+                    <figcaption align="middle">"Iri" Shading</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/iriTorus.png" width="800px" />
+                    <figcaption align="middle">"Iri" Shading on a Torus, with different trig functions.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/trig.png" width="800px" />
+                    <figcaption align="middle">"TrigBeauty" Shading.</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <h2 align="middle">Part 7: Design Your Own Mesh!</h2>
+        <p> I made a fire hydrant using maya, then exported it as .dae file. Here is the fire hydrant with a few shaders and subdivision schemes. Subdivision was very slow because the hydrant was already a very detailed mesh.</p>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/hydrantNOq.png" width="800px" />
+                    <figcaption align="middle">The hydrant without smoothing.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/hydrantQ.png" width="800px" />
+                    <figcaption align="middle">The hydrant with smoothing.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/sub2.png" width="800px" />
+                    <figcaption align="middle">The hydrant with one subdivision and no smoothing.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/sub3.png" width="800px" />
+                    <figcaption align="middle">The hydrant with two subdivisions and no smoothing.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/trighyd.png" width="800px" />
+                    <figcaption align="middle">The hydrant with "TrigBeauty" shading.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/irihyd.png" width="800px" />
+                    <figcaption align="middle">The hydrant with "Iri" shading.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/invHydrant.png" width="800px" />
+                    <figcaption align="middle">The hydrant with inverse environment shading.</figcaption>
+                </tr>
+            </table>
+        </div>
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/envhyd.png" width="800px" />
+                    <figcaption align="middle">The hydrant with environment shading. </figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="left">
+            <table style="width=50%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/hydrant.png" width="800px" />
+                    <figcaption align="middle">The hydrant with regular old red Phong shading. A classic.</figcaption>
+                </tr>
+            </table>
+        </div>
+</div>
+</body>
+</html>
+
+
+
+

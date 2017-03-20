@@ -1,0 +1,30 @@
+RENDERINGS:
+
+Dragon:
+Ideal (probably g=0 or -0.2 or something, absorption about 0) - Trevor
+g=0, g=-1, g=1 - front and back - Trevor
+absorption coefficients to 0.4 - Trevor
+Possibly direct lighting only - Trevor
+Glossy - Beth
+Combinations of single scattering & diffuse - Beth
+Possibly a diffuse version - Beth
+
+
+Maxplanck:
+Ideal (probably looking at face) - Becca
+Octree depths (error) - Becca
+
+Milk
+Ideal - Becca
+
+Skin
+Ideal - Becca
+
+Visualizer images
+Beth & Becca
+
+PRESENTATION:
+Each of our sections of the pictures.
+Trevor: Octree & what diffuse represents / show diffuse equation
+Becca: Dipole setup & coefficients
+Beth: Single scattering & what it represents & gathering surface points

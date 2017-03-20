@@ -1,0 +1,6 @@
+Pathtracer.cpp
+lines 812-814 (sample surface points)
+lines 1053-1054 (estimate_direct_lighting)
+
+BSSRDF.cpp
+line 20 (diffuse_approximation)

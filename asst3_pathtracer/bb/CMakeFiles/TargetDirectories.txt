@@ -1,0 +1,5 @@
+/Users/beccamilman/Desktop/asst3_pathtracer/build/src/CMakeFiles/pathtracer.dir
+/Users/beccamilman/Desktop/asst3_pathtracer/build/CGL/deps/glfw/CMakeFiles/uninstall.dir
+/Users/beccamilman/Desktop/asst3_pathtracer/build/CGL/deps/glfw/src/CMakeFiles/glfw.dir
+/Users/beccamilman/Desktop/asst3_pathtracer/build/CGL/src/CMakeFiles/CGL.dir
+/Users/beccamilman/Desktop/asst3_pathtracer/build/CGL/deps/glew/CMakeFiles/glew.dir

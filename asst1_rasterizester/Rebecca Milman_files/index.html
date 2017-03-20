@@ -1,0 +1,368 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0072)file:///Users/beccamilman/Desktop/asst1_rasterizester/website/index.html -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Your Name  |  CS 184</title>
+
+<link rel="stylesheet" type="text/css" href="./Your Name _ CS 184_files/style.css" media="screen">
+</head>
+<body>
+<br>
+<h1 align="middle">Assignment 1: Rasterizester</h1>
+    <h2 align="middle">Rebecca Milman</h2>
+
+    <div class="padded">
+        <p>This project explores the fundemental concepts of computer graphics. From the basic idea that pixels are discrete and the world is continuous, computer scientists have a lot of work to do. We must approximate images so that their pixelated form appears as clear as possible. As images get more highly detailed, or farther away, these challenges become greater as aliasing comes into play. This project introduces line and triangle rasterization, simple anti-aliasing, transforms, texture mapping and mipmaps. It also taught me a fair amount of a new language, c++. My appreciation for programs I'ved for many years, like Photoshop, has grown enormously. </p>
+        </p> 
+        
+        
+
+    <h2 align="middle">Part 1: Rasterizing Lines</h2>
+        <p>In order to rasterize lines, I started with Bresenham's algorithm to make lines where x0 &gt; x1 and the slope was positive but no more than one. From this set of lines, I used transformations to make all other sets of lines.For example, to make lines with slopes greater than one and positive, you can reflect about x = y, by switching x and y. I did these transformation by reassigning the variables and then switching them back when calling rasterize point. Line rasterization took me the longest of any part, as figuring out the transformation was difficult. For a while, I could not separate negative and positive greater than one slopes, so I was missing some lines. See the picture below. I also realized once I implemented rasterize_triangle that my lines didn't match with my triangles, but it was a <= problem. See dragons below to compare.</p>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/bad_lines.png" width="800px">
+                    <figcaption align="middle">When I was struggling to rasterize slope &gt; 1 lines.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_lines.png" width="800px">
+                    <figcaption align="middle"> My successful line rasterization.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/bad_dragon.png" width="800px">
+                    <figcaption align="middle"> Mismatched triangles and lines.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+
+          <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_dragon.png" width="800px">
+                    <figcaption align="middle"> An aligned triangle line harmony.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+       
+        
+
+    <h2 align="middle">Part 2: Rasterizing single-color triangles</h2>
+        <p>In order to rasterize a triangle, one must check if a point it between three lines. At first, I tried to start at the bottom point of the traingle and move up by y one at time. Everytime I moved up by y, I check the left and right lines' x coodinates at that y and rasterized every (x,y) point between those coordinates. However, I had trouble implementing this method with Bresenham's error calculation, so it was too many floats. With limited time, I opted for a more straightforward approach: the bounding box. To make a bounding box I just got the max and min of the x and y coordinates of each vertex. For every point in that box, I found the barycentric coordinates alpha, beta and gamma. If any of these were negative, the point was not in the triangle. Implementing barycentric early on helped me to do parts 5 through 7. I added an additional check to make sure I was consistent when making triangles that shared an edge. Whichever triangle closer to the off screen point (-1, -1) got priority. Notice my triangles have and odd gap between end points on very narrow triangles. This was later solved by antialiasing.</p>
+         <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_tri.png" width="800px">
+                    <figcaption align="middle"> My triangle rasterization. Notice the strange gap on the pink and red triangles. </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+       
+    <h2 align="middle">Part 3: Antialiasing triangles</h2>
+        <p>One method to antialias triangles is to supersample. For every pixel you calculate the rgba values of some number subdivisions of that pixel. The number of subdivisions is the sample rate. This is better than single sampling because it allows pixels that would not qualify as being in a triangle in single sampling to be partially colored. In other words, if a pixel is partially in a triangle, instead of assuming its not at all in the triangle, you give it a partial rgba contribution from the triangle. I did this by creating a superframebuffer in drawrend.cpp. The super frame buffer was just like the frame buffer, but it had samplerate times the number of pixels. To get a point from  single sample xy space to super sample xy space, I just multiplied x and y by the square root of the sample rate. So if the sample rate was 9, the point (1,1) would become (3,3). The points I sampled from to resolve point (1,1) was the 3x3 square with (3,3) as the top left corner. In order to resolve the sample amount of points back to one pixel with one set of rgba values, I just averaged the rgba of each sample. I also had to change rasterize point because rasterize point is a specific point that does not need super sampling. So I artificially filled my super buffer with points all of the same color, so that they would still resolve to that same point. Rasterize_point now calls super_rasterize_point after filling in the extra points. However, something about this was not right so it does slightly alias points, as you can see below. My other major bug in this part was a missed bracket that ended up leaving black images. I was just always resetting pixels to black and never filling them with the right color. However, finding that bracket was the solution, somehow I managed to avoid indexing problems that seemed common. Anti-aliasing greatly improved triangles with long skinny edges as you will see in the pictures below.</p>
+         <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/blur_point.png" width="800px">
+                    <figcaption align="middle"> Sample Rate = 16. Notice the improvement on the pink and red triangles!</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_tri.png" width="800px">
+                    <figcaption align="middle"> Sample Rate = 1.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_tri4.png" width="800px">
+                    <figcaption align="middle"> Sample Rate = 4. Still a little jaggy.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_tri9.png" width="800px">
+                    <figcaption align="middle"> Sample Rate = 9.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/good_tri16.png" width="800px">
+                    <figcaption align="middle"> Sample Rate = 16. Notice the improvement on the pink and red triangles!</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+
+
+    <h2 align="middle">Part 4: Transforms</h2>
+        <p> Here, I used matrix transformations to implement zoom, move, and rotate. In order to implement zoom and move, I extracted information from the current matrix (svg_to_ndc[current_svg]) to get x, y and span so than I could shift them and scale them. Because setview() was already created, I called that to update the image on screen. For rotate, I just multiplied a rotation matrix and the current matrix. I had fun playing around with this, but none of the other rotations I made were particularly helpful, as they tended to irreversibly (noninvertible matrix) warp the image. I added counterclockwise and clockwise rotation to my gui by adding more keyboard input keys. See a sample below. I had a strange bug that caused my cursor to stop registering the right place, but I fixed it by updating cursor event. My new svg file is an adaption from basic test 4, I just made different polygons with different colors. In my transformation stack, I noticed that the order that I do the transforms in matters. In order to make sure the image stayed on screen, I had to be careful about when I do what transformation. So, first I scaled the whole thing down, then moved it, then rotated it. I did this as if all the polygons were one image, not separately. I also tried moving just one polygon at a time. Similar rules about order mattering apply. </p>
+        <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/moved.png" width="800px">
+                    <figcaption align="middle"> A moved, scaled, and rotated image. It moves by 10º at a time in the direction you choose. Notice it rotates about the top left corner. </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+         <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/polygons.png" width="800px">
+                    <figcaption align="middle"> A polygon image adapted from basic/test4.svg before any transforms. </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+         <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/polygons_moved.png" width="800px">
+                    <figcaption align="middle"> A rotated, scaled, and translated image from above.</figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+
+    <h2 align="middle">Part 5: Barycentric coordinates</h2>
+        <p>Barycentric coordinates were easy to implement with color here, because I used them for triangle rasterization. What are barycentric coordinates? The way I think of them, they are a tool for measuring how close a point is to one of the three vertices of a triangle, or how alike that point should be to that vertex in color. There are two ways to decide how close a point is. You can attach the point to each of the vertices by line segments and measure the area of one subtriangle relative to the whole triangle or you can use proportional distances from the opposite side of a triangle to the point in question. I used proportional distances by calculating how far a normal to the opposide side was and how far it was from the opposite side to the point. That ration becomes alpha if the side is opposite vertex A. Below is a sample triangle interpolating between perfect rbg values. 
+        </p>
+         <p>
+        I had beautiful glitches in this part. The first one's reason escapes me, but I thought I's include it because its cool. The second one is a result of mixing up the colors of the vertices that I multiplied alpha, beta, and gamma with. 
+        </p>
+          <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/rgb_tri.png" width="800px">
+                    <figcaption align="middle"> A barycentrically interpolated triangle. Each vertex is pure red, green, or blue. </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+         <div align="left">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/color_wheel.png" width="800px">
+                    <figcaption align="middle"> This is the color wheel in its successful form.  </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+          <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/pretty_glitch.png" width="450px">
+                    <figcaption align="middle"> Glitch Art.  </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+          <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/wrong_tri.png" width="450px">
+                    <figcaption align="middle"> Glitch Art. Notice the wrong orientation of the triangle coloring. </figcaption>
+                </td></tr>
+            </tbody></table>
+        </div>
+
+    <h2 align="middle">Part 6: Pixel sampling for texture mapping</h2>
+        <p>
+        In this part, I implemented basic texture mapping by using user input for choice in type of pixel sampling and level sampling in Part 7. For every point (x, y) in pixel space, there is a corresponding (u,v) in texel space. Texture triangles in svg give the (u,v) that corresponds to each (x,y) for the vertices. For everything in between, one must interpolate the coordinates barycentrically as two dimensional vectors instead of as colors. I did this very similarly to part 5, by weighting the three (u,v) vertices by the alpha, beta, and gamma. To implement nearest pixel sample, all I did is take the (u,v) that (x,y) interpolated to, converted their values to the nearest integer, and found that color in the texel frame buffer. To do this, I indexed into the relevant mipmap of the texture and used a similar process to the supersample buffer to index in from a point. For bilinear pixel sampling, I got the four nearest points to what (x,y) interpolated to and then got their colors in the texel buffer, checking for (literal) edge cases before indexing. Once I had all four colors, I linearly interpolate each pair of horizontal points and then interpolated those pairs.
+        This is the color I returned. Below are images of the combinations of supersampling and pixel sampling images with commentary on their strengths and weaknesses. There is also a glitch art picture of when I was sampling the colors incorrectly.
+        </p>
+        </div>
+        <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/s1bilenear.png" width="450px">
+                    <figcaption align="middle"> There is a drastic improvement with using bilinear sampling as opposed nearest pixel at sample level one. In a sense, bilinear sampling is smoothing through four texture samples instead of 16 color samples. </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+           </div>
+        <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/s16bile_near.png" width="450px">
+                    <figcaption align="middle"> The improvement by using bilinear sampling as opposed nearest pixel is less drastic for a sample rate of 16, because the image is smoothed either way.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+         </div>
+        <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/s1bilenear.png" width="450px">
+                    <figcaption align="middle"> There is a drastic improvement with using bilinear sampling as opposed nearest pixel at sample level one. In a sense, bilinear sampling is smoothing through four texture samples instead of 16 color samples. </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div></div>
+        <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/texture_glitch1.png" width="450px">
+                    <figcaption align="middle"> The wrong sampling scheme can lead to a nonsense image like this one. </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+        
+
+    <h2 align="middle">Part 7: Level sampling with mipmaps for texture mapping</h2>
+        <p> Level sampling involves mipmaps. Mipmaps are helpful tools that essentially approximate textures for when you are taking a sample from an xy space that takes a lot of area in uv space. Level 0 is good for when the area of the xy sample is almost the same as the uv sample. Larger levels are good for when the uv sample is much larger. I calculated the appropriate level by using two nearby (x,y) points, one above and one to the right and found their (u,v) coordinates to see how much each of these point changed in (du/dx,du/dy) and (dv/dx, dv/dy) and took the maximum change's log to get a level. Level zero is taking the texture before its approximated, each further level approximates by a factor of two with surrounding pixels. Skewed samples can be anti-aliased with supersampling but at the expense of having a very high sample rate. Mipmaps require less calculation but tend to overblur in places were the samples are highly skewed. A skewed sample is one that has a larger chnage in one direction than the other. Another issue that can arrise is when an area is between mipmap levels. The way to handle it is trilinear sampling. I take a sample from its low nearest and it high nearest mipmap level and interpolate them. Below is a cropped, but highly zoomed in texture from /the internet/. Notice the way the edges especially change in each of these sampling methods below. These are all single sample. 
+        </p>
+        </div>
+        <div align="middle">
+            <table style="width=50%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/lv0np.png" width="450px">
+                    <figcaption align="middle"> Level Zero, Sample Nearest. It gets disconnected at the edges because of aliasing.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+
+           </div>
+        <div align="middle">
+            <table style="width=50%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/lvNnp.png" width="450px">
+                    <figcaption align="middle"> Level Nearest, Sample Nearest. Its a little smoother at the edges with the help of a non zero mipmap level.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+       
+           </div>
+        <div align="middle">
+            <table style="width=50%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/lvLnp.png" width="450px">
+                    <figcaption align="middle"> Linear Level, Sample Nearest. Much more blurred at the edges. Much less aliasing.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+
+         </div>
+           <div align="middle">
+            <table style="width=50%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/lv0bi.png" width="450px">
+                    <figcaption align="middle"> Level Zero, Sample Bilinear. Similar aliasing problems because of the intense zoom. In need of mipmaps.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+
+        </div>
+        <div align="middle">
+            <table style="width=50%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/lvNbi.png" width="450px">
+                    <figcaption align="middle"> Level Nearest, Sample Bilinear. Better!
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+
+         </div>
+          <div align="middle">
+            <table style="width=50%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/lvLbi.png" width="450px">
+                    <figcaption align="middle"> Trilinear Sampling: Linear Level, Sample Bilinear. A much smoother image. This seems to be the best option for highly zoomed out images.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+        
+
+    <h2 align="middle">Part 8: My drawing</h2>
+        <p>I created a set of colored hexagons that plaster the walls of a cube in perspective. I used Illustrator to get the points for the hexagons and then I tried to figure out the elements that Illustrator used and my implementation couldn't. After that, I filled in the colors using an rgb to hex calculator. Also, I tried rasterizing my lines because I was curious what would happen. See the below images for my part 8 and rasterized lines!</p>
+          </div>
+          <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/part8.png" width="450px">
+                    <figcaption align="middle"> Hexagons galore.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+          </div>
+          <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/linesless.png" width="450px">
+                    <figcaption align="middle"> Unrasterized lines.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+          </div>
+          <div align="middle">
+            <table style="width=100%">
+                <tbody><tr>
+                    <td align="middle">
+                    <img src="./Your Name _ CS 184_files/linesuper.png" width="450px">
+                    <figcaption align="middle"> Rasterized lines.
+                    </figcaption>
+                </td></tr>
+            </tbody></table>
+         </div>
+</ul></o></div>
+
+
+
+
+
+
+</body></html>

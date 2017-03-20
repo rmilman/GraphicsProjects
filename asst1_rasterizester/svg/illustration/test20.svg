@@ -1,0 +1,12 @@
+
+    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+    <svg width="447.48px" height="146.41px" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    	<polygon fill="#F00F00" stroke-width="0" points="45.15 54.18 447.08 0.59 447.08 57.74 45.15 54.18"/>
+    	<polygon fill="#F0FF00" stroke-width="0"  points="191.13 0.59 447.08 0.59 45.15 54.18 191.13 0.59"/>
+    	<polygon fill="#FFFF00" stroke-width="0"  points="3.04 69.64 45.15 54.18 447.08 57.74 3.04 69.64"/>
+    	<polygon fill="#FF0F00" stroke-width="0"  points="3.04 0.59 128.03 22.02 3.04 47.02 3.04 0.59"/>
+		<polygon class="cls-1" points="3.04 69.64 447.08 114.88 447.08 57.74 3.04 69.64"/>
+    	<polygon fill="#FF0F00" stroke-width="0" points="3.04 114.88 3.04 69.64 447.08 114.88 3.04 114.88"/><polygon fill="#FFFF00" stroke-width="0"  points="3.04 145.83 225.06 114.88 3.04 114.88 3.04 145.83"/><polygon fill="#0FFF00" stroke-width="0"  points="45.15 139.96 447.08 145.83 447.08 114.88 45.15 139.96"/>
+    	<polygon fill="#F0FF00" stroke-width="0"  points="45.15 139.96 225.06 128.09 225.06 114.88 45.15 139.96"/>
+    	<polygon fill="#F0F000" stroke-width="0" points="235.41 128.09 447.08 145.83 3.04 145.83 235.41 128.09"/>
+    </svg>

@@ -1,0 +1,165 @@
+uniform int outputID;
+uniform sampler2D envmap;
+uniform vec3 eyePos;
+varying vec3 normal;
+varying vec3 vertex;
+
+#define PI 3.1415926
+
+vec3 shadeDiffuseFromEye();
+
+vec3 shadePhong(vec3 lightPos);
+
+vec3 shadeEnvmapReflection();
+
+vec3 inverseEnvironment();
+
+vec3 iri(vec3 lightPos);
+
+vec3 trigBeauty(vec3 lightPos);
+
+void main()
+{
+    if(outputID == 0)
+    {
+        gl_FragColor = vec4(shadeDiffuseFromEye(), 1.0);
+        return;
+    }
+    if(outputID == 1)
+    {
+        gl_FragColor = vec4(shadePhong(vec3(10, 10, 10)), 1.0);
+        return;
+    }
+    if(outputID == 2)
+    {
+        gl_FragColor = vec4(shadeEnvmapReflection(), 1.0);
+        return;
+    }
+    if(outputID == 3)
+    {
+        gl_FragColor = vec4(inverseEnvironment(),1.0);
+        return;
+    }
+    if(outputID == 4)
+    {
+        gl_FragColor = vec4(iri(vec3(10, 10, 10)),1.0);
+        return;
+    }
+    if(outputID == 5)
+    {
+        gl_FragColor = vec4(trigBeauty(vec3(16, 10, 10)),1.0);
+        return;
+    }
+    
+}
+
+vec3 shadeDiffuseFromEye()
+{
+    vec3 n = normalize(normal);
+    vec3 out_vec = normalize(eyePos - vertex);
+    float diffuse = abs(dot(out_vec, n));
+    return vec3(diffuse);
+}
+
+vec3 shadePhong(vec3 lightPos)
+{   // TODO Part 6.
+    // TODO Compute Phong shading here. You can choose any color you like. But please
+    // TODO make sure that you have noticeable specular highlights in the shading.
+    // TODO Variables to use: eyePos, lightPos, normal, vertex
+     // initialize diffuse/specular lighting
+
+    float MAX_DIST = 2.5;
+    float MAX_DIST_SQUARED = MAX_DIST * MAX_DIST;
+
+    //ambient
+    vec3 ambient = vec3(0.0, 0.44, 0.44);
+
+    //diffuse
+    vec3 n = normalize(normal);
+    vec3 lightDir = normalize(lightPos - vertex);
+    float dist = min(dot(lightDir,lightDir), MAX_DIST_SQUARED) / MAX_DIST_SQUARED;
+    float distFactor = 1.0 - dist;
+    float diffu = abs(dot(lightDir, n));
+    vec3 diffuse = .5*vec3(abs(diffu)*distFactor*distFactor);
+
+    //specular
+    vec3 specular = vec3(0.0);
+    vec3 eyeDir = normalize(eyePos - vertex); 
+    vec3 bisector = (eyeDir+lightDir)/length(eyeDir+lightDir);
+    float spec = .4*(pow(abs(dot(bisector, n)), 20.0)) * distFactor*distFactor;
+    specular = vec3(spec);
+
+    return clamp(ambient+specular+diffuse,0.0,1.0);
+}
+
+vec3 shadeEnvmapReflection()
+{   // TODO Part 6.
+    // TODO Compute environment mapping based on reflection direction here.
+    // TODO First compute the reflection direction using eyePos, normal and vertex.
+    // TODO Then convert the reflection direction to spherical coordinates (theta, phi). 
+    // TODO Note that the up vector is along +Z axis.
+    // TODO Finally, grab the color from envmap using (theta, phi).
+    // TODO You will need to use function "vec4 texture2D(sampler2D tex, vec2 uv)" to 
+    // TODO get colors from textures. 
+    vec3 n = normalize(normal);
+    vec3 eyeDir = normalize(eyePos - vertex); 
+    vec3 out_vec = 2.0*(dot(eyeDir, n))*n - eyeDir;
+    float x = out_vec[0];
+    float y = out_vec[1];
+    float z = out_vec[2];
+    float phi = acos(z/sqrt(x*x+y*y+z*z));
+    float theta = atan(y/x);
+    vec3 colors = vec3(texture2D(envmap, vec2(theta, phi)));
+    return colors;
+}
+
+vec3 inverseEnvironment()
+{
+    vec3 env = shadeEnvmapReflection();
+    return vec3(1.0-env[0],1.0 - env[1], 1.0-env[2]);
+}
+
+vec3 iri(vec3 lightPos)
+{
+    vec3 h = shadePhong(lightPos);
+    return vec3(sin(h[0]), cos(h[1]), h[2]);
+}
+
+vec3 trigBeauty(vec3 lightPos)
+{
+
+    float MAX_DIST = 2.5;
+    float MAX_DIST_SQUARED = MAX_DIST * MAX_DIST;
+
+    //ambient
+    vec3 ambient = vec3(0.255, 0.627, 0.686);
+
+    //diffuse
+    vec3 n = normalize(normal);
+    n = vec3(sin(20.0*n[0]), cos(40.0*n[1]), cos(n[2])*sin(n[2]));
+    n = normalize(n);
+    vec3 lightDir = normalize(lightPos - vertex);
+    float dist = min(dot(lightDir,lightDir), MAX_DIST_SQUARED) / MAX_DIST_SQUARED;
+    float distFactor = 1.0 - dist;
+    float diffu = abs(dot(lightDir, n));
+    vec3 diffuse = .75*vec3(abs(diffu)*distFactor*distFactor);
+
+    //specular
+    vec3 specular = vec3(0.0);
+    vec3 eyeDir = normalize(eyePos - vertex); 
+    vec3 bisector = (eyeDir+lightDir)/length(eyeDir+lightDir);
+    float spec = .25*(pow(abs(dot(bisector, n)), 40.0)) * distFactor*distFactor;
+    specular = vec3(spec);
+
+    //diffuse
+    n = normalize(normal);
+    float diffu2 = abs(dot(lightDir, n));
+    vec3 diffuse2 = 1.0*vec3(abs(diffu2)*distFactor*distFactor);
+
+    //specular
+    vec3 specular2 = vec3(0.0);
+    float spec2 = .4*(pow(abs(dot(bisector, n)), 20.0)) * distFactor*distFactor;
+    specular2 = vec3(spec2);
+
+    return clamp(.5*(ambient+specular+diffuse)+.5*(specular2+diffuse2),0.0,1.0);
+}

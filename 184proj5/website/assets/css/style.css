@@ -1,0 +1,251 @@
+
+
+.sidebar-container{
+	position: fixed;
+	width: 280px;
+	height: 100%;
+	background-color: black;
+	-webkit-transform: translateX(-280px);
+	-webkit-transition: all 0.3s;
+}
+
+.sidebar-item{
+	font-weight: 700;
+	font-size: 16px;
+	color: white;
+	padding: 15px 20px;
+	cursor: pointer;
+}
+
+.sidebar-item-title{
+	font-weight: 700;
+	font-size: 16px;
+	color: #2bde73;
+	padding: 15px 20px;
+	cursor: pointer;
+}
+
+
+
+.section-medium {
+	width: 100%;
+	height: 800px;
+	outline: black solid thick;
+	position: relative;
+	background-color: grey;
+}
+
+.section-small {
+	width: 100%;
+	height: 400px;
+	outline: black solid thick;
+	position: relative;
+	background-color: grey;
+}
+
+.section-tiny {
+	width: 100%;
+	height: 300px;
+	outline: black solid thick;
+	position: relative;
+	background-color: grey;
+}
+
+.pic-section {
+	width: 100%;
+	height: 2000px;
+	outline: black solid thick;
+	position: relative;
+	background-color: black;
+}
+
+.section-large {
+	width: 100%;
+	height: 1600px;
+	outline: black solid thick;
+	position: relative;
+	background-color: grey;
+}
+
+.section-xlarge {
+	width: 100%;
+	height: 2000px;
+	outline: black solid thick;
+	position: relative;
+	background-color: grey;
+}
+
+.section-title-page {
+	width: 100%;
+	height: 800px;
+	position: relative;
+	background-color: black;
+}
+
+.section-title {
+	width: 100%;
+	height: 500px;
+	position: relative;
+	background-color: black;
+}
+
+
+/* DOCUMENT SET UP */
+
+body, html {
+	margin: 0 auto;
+	width: 100%;
+	height: 100%;
+	min-width: 960px;
+	background-color: black;
+	-webkit-font-smoothing: antialiased;
+	-o-font-smoothing: antialiased;
+	font-smoothing: antialiased;
+	font-family: Lato;
+}
+
+a {
+	text-decoration: none;
+}
+
+p {
+	text-align: justify;
+}
+
+.clear {
+	clear: both;
+}
+
+.img-scaled {
+	width: 100%;
+	height: 100%;
+}
+
+.img-scaled-wh {
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+
+
+#nav-toggle { 
+	position: absolute; 
+	left: 50%; top: 50%; 
+}
+
+#nav-toggle {
+	padding: 10px 30px 15px 0px; 
+}
+
+#nav-toggle span, #nav-toggle span:before, #nav-toggle span:after {
+	height: 3px;
+	width: 30px;
+	background: #fff;
+	position: absolute;
+	display: block;
+	content: '';
+}
+
+#nav-toggle span:before {
+	top: -10px; 
+}
+
+#nav-toggle span:after {
+	bottom: -10px;
+}
+
+/* Styling the Sidebar Button */
+#sidebar-button {
+	position: fixed;
+	z-index: 100;
+	left: 15px;
+	top: 15px;
+	cursor: pointer;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	-o-transition: all .3s;
+	transition: all .3s;
+} 
+/* Overriding default styles on the ul */
+.sidebar-container ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	margin-top: 10px;
+}
+
+.page-wrapper {
+	height: 100%;
+	width: 100%;
+	-webkit-transition: all .3s;
+	-moz-transition: all .3s;
+	transition: all .3s;
+}
+
+
+/* Styling for the quotes and text in each section */
+.text {
+	position: absolute;
+	color: white;
+	font-size: 18px;
+	font-weight: 700;
+    top: 10%;
+    left: 20%;
+    -webkit-transform: translateX(-10%) translateY(-10%);
+    -moz-transform: translateX(-10%) translateY(-10%);
+   	transform: translateX(-10%) translateY(-10%);
+}
+
+.text-center {
+	position: absolute;
+	font-size: 36px;
+	color: #2bde73;
+	font-weight: 700;
+    top: 50%;
+    left: 50%;
+    -webkit-transform: translateX(-50%) translateY(-50%);
+    -moz-transform: translateX(-50%) translateY(-50%);
+   	transform: translateX(-50%) translateY(-50%);
+}
+
+.text-title {
+	position: absolute;
+	text-align: center;
+	font-size: 36px;
+	color: #2bde73;
+	font-weight: 700;
+    top: 30%;
+    left: 50%;
+    -webkit-transform: translateX(-50%) translateY(-20%);
+    -moz-transform: translateX(-50%) translateY(-20%);
+   	transform: translateX(-50%) translateY(-20%);
+}
+
+
+/* Styling for the author text in each quote */
+.author {
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .2rem;
+	text-transform: uppercase;
+	margin-top: 10px;
+	text-align: center;
+}
+
+/* jQuery Manipulation Classes */
+
+.no-scroll {
+	overflow: hidden;
+}
+
+.wrapper-active, .button-active {
+	-webkit-transform: translateX(280px);
+	-moz-transform: translateX(280px);
+	transform: translateX(280px);
+}
+
+.sidebar-active {
+	-webkit-transform: translateX(0px);
+	-moz-transform: translateX(0px);
+	-o-transform: translateX(0px);
+}

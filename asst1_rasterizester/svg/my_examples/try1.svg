@@ -1,0 +1,30 @@
+
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 16.0.4, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+   width="487.211px" height="642.045px" viewBox="0 0 487.211 642.045" enable-background="new 20 0 487.211 642.045"
+   xml:space="preserve">
+<g transform="rotate(0)">
+<polygon fill="#38359D" points="67,230. 40.343,200 46.686,303.637 317.662,163.637"/>
+<polygon fill="#20E418" points="117.662,163.637 348.343,0 387.211,129.546 15.621,202.273"/>
+<polygon fill="#E2161F" points="15.621,302.273 151.417,293.182 287.211,263.637 25.616,472.727"/>
+<polygon fill="#ED3518" points="241.525,572.727 25.616,572.727 25.616,356.817 "/>
+<polygon fill="#ED11E2" points="264.781,631.819 278.417,309.091 371.599,642.045 67,230."/>
+</g>
+</svg>
+
+<!--   <g transform="rotate(45 50 50)">
+    <svg x="100"
+        <line x1="10" y1="10" x2="85" y2="10"
+            style="stroke: #006600;"/>
+
+        <rect x="10" y="20" height="50" width="75"
+            style="stroke: #006600; fill: #006600"/>
+
+        <text x="10" y="90" style="stroke: #660000; fill: #660000">
+          Text grouped with shapes</text>
+
+    </svg>
+  </g> -->
